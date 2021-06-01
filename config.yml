@@ -1,0 +1,46 @@
+# Configure file for ChatBridgeReforged
+# Check xxx for detail
+# Dont be Surprised, i just copy from MCDR
+
+
+# =========================================
+# |            Basic Configure            |
+# =========================================
+
+
+# Server setting
+# The ip_address, port and aes_key that CBR use
+server_setting:
+  ip_address: '192.168.1.19'
+  port: 7777
+  aes_key: 'ThisIstheSecret'
+
+
+# Client_servers setting
+# A List for server servers
+clients:
+  - name: 'survival'
+    password: 'survival'
+  - name: 'testClient2'
+    password: 'no_password'
+  - name: 'testClient'
+    password: 'testPassword'
+
+
+# The language that CBR will use to display information
+# Examples: "en_us", "zh_cn"
+
+
+# =========================================
+# |           Advance Configure           |
+# =========================================
+
+
+# When set to true, CBR will removed all console font formatter codes in before any message gets printed onto the console
+
+
+# Debug mode switches
+debug:
+  all: true 
+  CBR: false
+  plugin: false
