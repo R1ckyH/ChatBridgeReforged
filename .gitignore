@@ -1,4 +1,11 @@
 # ChatBridgeReforged 2021
 
-#pyc
+#Files
+.log
 .pyc
+astdin.py
+clinettest.py
+server.py
+servertest.py
+test.py
+config.yml
