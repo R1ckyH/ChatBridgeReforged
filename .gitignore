@@ -1,8 +1,8 @@
 # ChatBridgeReforged 2021
 
 #Files
-.log
-.pyc
+*.log
+*.pyc
 astdin.py
 clinettest.py
 server.py
