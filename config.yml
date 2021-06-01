@@ -11,8 +11,8 @@
 # Server setting
 # The ip_address, port and aes_key that CBR use
 server_setting:
-  ip_address: '192.168.1.19'
-  port: 7777
+  ip_address: '127.0.0.1'
+  port: 30001
   aes_key: 'ThisIstheSecret'
 
 
@@ -21,10 +21,8 @@ server_setting:
 clients:
   - name: 'survival'
     password: 'survival'
-  - name: 'testClient2'
-    password: 'no_password'
-  - name: 'testClient'
-    password: 'testPassword'
+  - name: 'creative'
+    password: 'creative'
 
 
 # The language that CBR will use to display information
@@ -41,6 +39,6 @@ clients:
 
 # Debug mode switches
 debug:
-  all: true 
+  all: false
   CBR: false
   plugin: false
