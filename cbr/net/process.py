@@ -4,20 +4,24 @@ import json
 from cbr.lib.logger import CBRLogger
 #from cbr.cbr_server import CBRServer
 
+help_msg = '''====================CBR====================
+help/? for help msg
+list for list clients in config.yml
+stop/end stop server
+stop (client name) stop client connection
+say msg send msg to clients
+'''
+
+
 class Process:
     def __init__(self, tcp_server, logger : CBRLogger):
         self.server = tcp_server
         self.logger = logger
+        self.current_client = ''
 
     def add_new_client(self, reader, writer, name):
-        client = {
-            name : {
-                'reader' : reader,
-                'writer' : writer
-            }
-        }
-        self.server.client_list.update(client)
-        self.server.client_name.append(name)
+        self.server.clients[name].update({'reader' : reader, 'writer' : writer})
+        self.server.clients[name]['online'] = True
 
     def login(self, name, password, clients):
         for i in range(len(clients)):
@@ -30,6 +34,13 @@ class Process:
                     return False
         self.logger.error('Client not found in config.yml')
         return False
+
+    def message_formater(self, client, player, msg):
+        if player != "":
+            message = f"[{client}] <{player}> {msg}"  # chat message
+        else:
+            message = f"[{client}] {msg}"
+        return message
 
     async def proceess_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
         if 'action' in msg.keys():
@@ -46,20 +57,64 @@ class Process:
             elif msg['action'] == 'keepAlive':
                 await self.server.send_msg(writer,'{"action": "keepAlive", "type": "pong"}')
             elif msg['action'] == 'message':
+                message = self.message_formater(msg['client'], msg['player'], msg['message'])
                 if msg['player'] != "":
                     message = f"[{msg['client']}] <{msg['player']}> {msg['message']}"  # chat message
                 else:
                     message = f"[{msg['client']}] {msg['message']}"
                 self.logger.info(message)
                 await self.msg_mc_server(msg, self.current_client)
-    
-    
+            elif msg['action'] == 'stop':
+                await self.close_connection(writer, self.current_client)
+
+    async def close_connection(self, writer, client):
+        self.server.clients[client]['online'] = False
+        if not writer.is_closing():
+            await self.server.send_msg(writer, json.dumps({'action' : 'stop'}), client)
+            writer.close()
+
     async def msg_mc_server(self, msg, client_except = ''):
-        for i in range(len(self.server.client_name)):
-            if client_except != self.server.client_name[i]:
-                writer = self.server.client_list[self.server.client_name[i]]['writer']
-                await self.server.send_msg(writer, str(json.dumps(msg)), self.server.client_name[i])
-                self.logger.debug(f"Send {msg} to {self.server.client_name[i]}")
+        for i in self.server.clients.keys():
+            if client_except != i and self.server.clients[i]['online'] == True:
+                writer = self.server.clients[i]['writer']
+                await self.server.send_msg(writer, str(json.dumps(msg)), i)
+    
+    async def server_msg(self, msg):
+        message = {"action": "message",
+            "client": "CBR",
+            "player": "",
+            "message": f"{msg}"
+        }
+        msg = self.message_formater("CBR", '', msg)
+        self.logger.info(msg)
+        await self.msg_mc_server(message)
+
+    def online_list(self):
+        cnt = len(self.server.clients)
+        self.logger.info(f'Client count: {cnt}')
+        for i in self.server.clients.keys():
+            self.logger.info(f"- {i} : online = {self.server.clients[i]['online']}")
+
+    async def msg_process(self, msg):
+        if msg == 'help' or msg == '?':
+            for i in help_msg.splitlines():
+                self.logger.info(i)
+        elif msg == 'list':
+            self.online_list()
+        elif msg.startswith('stop') or msg == 'end':
+            if msg == 'stop' or msg == 'end':
+                await self.server.stop()
+            else:
+                args = msg.split(' ')
+                if args[1] in self.server.clients.keys():
+                    await self.close_connection(self.server.clients[args[1]]['writer'], args[1])
+                else:
+                    self.logger.info("Client not found")
+        elif msg.startswith('say'):
+            msg = msg.replace('say ', '')
+            await self.server_msg(msg)
+        else:
+            self.logger.info('Unknown command use help or ? for help message')
 
 
 LibVersion = 'v20200116'

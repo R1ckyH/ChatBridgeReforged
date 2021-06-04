@@ -1,4 +1,4 @@
 # Chatbridgerforged
-- v0.0.1-Alpha001
+- v0.0.1-Alpha002
 - just for watching
 - don't use it
