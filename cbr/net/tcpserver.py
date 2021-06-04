@@ -1,6 +1,5 @@
 import asyncio
 import json
-from logging import shutdown
 import struct
 import threading
 import time
@@ -27,7 +26,9 @@ class network(AESCryptor):
         return msg
 
     async def send_msg(self, writer : asyncio.StreamWriter, msg ,target = ''):
-        self.logger.debug(f"Send: {msg + target!r}")
+        if target != '':
+            target = 'to ' + target
+        self.logger.debug(f"Send: {msg!r} {target}")
         msg = self.encrypt(msg)
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
@@ -43,37 +44,42 @@ class CBRTCPServer(network):
         self.config_data = config_data
         self.ip = config_data['server_setting']['ip_address']
         self.port = config_data['server_setting']['port']
-        self.client_name = []
-        self.client_list = {}
+        self.clients = self.setup()
         self.input_msg = None
 
     def start(self):
+        asyncio.run(self.run())
+
+    async def run(self):
         try:
-            asyncio.run(self.main())
+            await self.main()
         except KeyboardInterrupt:
-            self.stop()
+            await self.stop()
         exit(0)
 
-    def stop(self):
+    async def stop(self):
         self.loop_input = False
         self.logger.debug('Server closing')
-        #self.close_all_connection()
-        #self.shutdown()
+        await self.close_all_connection()
         self.server.close()
         self.logger.info("Server closed")
     
-    def shutdown(self):
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
+    def setup(self):
+        client_config = self.config_data['clients']
+        client_dict = {}
+        for i in range(len(client_config)):
+            client_dict.update({client_config[i]['name'] : {
+                'password' : client_config[i]['password'], 
+                'online' : False
+            }})
+        return client_dict
 
-    def close_all_connection(self):
-        print(self.client_name)
-        for i in range(len(self.client_name)):
-            writer = self.client_list[self.client_name[i]]['writer']
-            print(writer.is_closing())
-            if not writer.is_closing():
-                writer.close()
-            self.logger.debug(f"{self.client_name[i]} is closed")
+    async def close_all_connection(self):
+        for i in self.clients.keys():
+            if self.clients[i]['online']:
+                writer = self.clients[i]['writer']
+                await self.process.close_connection(writer, i)
+                self.logger.debug(f"Connection of {i} is closed")
 
     async def main(self):
         self.logger.info('Server starting')
@@ -86,49 +92,43 @@ class CBRTCPServer(network):
         readthread = threading.Thread(target = self.wait_for_msg, name = 'INPUT')#fuck asyncio in windows (welcome pull request to give a better solution)
         async with self.server:
             readthread.start()
-            await self.msg_to_all()
-            await self.server.serve_forever()
+            self.process = Process(self, self.logger)
+            await self.input_process()
+            try:
+                await self.server.serve_forever()
+            except RuntimeError:#fuck asyncio raise error
+                return
 
     async def handle_echo(self, reader, writer : asyncio.StreamWriter):
-        process = Process(self, self.logger)
         addr = writer.get_extra_info('peername')
         self.logger.debug(f"new session started from {addr}")
         while not writer.is_closing():
             try:
-                await asyncio.wait_for(self.server_process(reader, writer, process), timeout=120)
+                await asyncio.wait_for(self.server_process(reader, writer), timeout=120)
             except asyncio.TimeoutError as te:
                 self.logger.error(f'Connection time out!{te}')
                 self.logger.bug(exit_now = False)
                 writer.close()
                 self.logger.debug(f'Asyncio writer from {self.addr} closed now')
             except:
-                self.logger.info(f'Connection closed from {process.current_client}')
+                self.logger.info(f'Connection closed from {self.process.current_client}')
+                self.clients[self.process.current_client]['online'] = False
         # writer.close()
 
-    async def server_process(self, reader, writer, process : Process):
+    async def server_process(self, reader, writer):
             addr = writer.get_extra_info('peername')
             msg = await self.receive_msg(reader, addr)
             msg = json.loads(msg)
-            await process.proceess_msg(msg, reader, writer, addr)
-    
-    async def server_msg(self, msg):
-        message = {"action": "message",
-            "client": "CBR",
-            "player": "",
-            "message": f"{msg}"
-        }
-        for i in range(len(self.client_name)):
-            self.logger.debug(self.client_name[i])
-            writer = self.client_list[self.client_name[i]]['writer']
-            await self.send_msg(writer, str(json.dumps(message)))
+            await self.process.proceess_msg(msg, reader, writer, addr)
 
-    async def msg_to_all(self):
-        while True:
+    async def input_process(self):
+        while self.server.is_serving():
             await asyncio.sleep(0.05)#tick
-            if self.loop_input == False:
-                break
             if self.input_msg != None:
-                await self.server_msg(self.input_msg)
+                try:
+                    await self.process.msg_process(self.input_msg)
+                except:
+                    self.logger.bug(exit_now = False)
                 self.input_msg = None
 
     def wait_for_msg(self):
