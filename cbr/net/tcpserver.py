@@ -1,6 +1,5 @@
 import asyncio
 import json
-import readline
 import struct
 import threading
 import time
@@ -113,15 +112,21 @@ class CBRTCPServer(network):
                 writer.close()
                 self.logger.debug(f'Asyncio writer from {self.addr} closed now')
             except RuntimeError:
+                self.logger.info(f'Connection closed from {client_process.current_client}')
+                self.clients[client_process.current_client]['online'] = False
                 break
             except:
                 self.logger.info(f'Connection closed from {client_process.current_client}')
                 self.clients[client_process.current_client]['online'] = False
+                #self.logger.bug(False)
+                break
         # writer.close()
 
     async def server_process(self, reader, writer, client_process : Process):
             addr = writer.get_extra_info('peername')
             msg = await self.receive_msg(reader, addr)
+            if msg == '':
+                return
             msg = json.loads(msg)
             await client_process.process_msg(msg, reader, writer, addr)
 
