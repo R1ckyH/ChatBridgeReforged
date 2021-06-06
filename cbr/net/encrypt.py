@@ -15,7 +15,7 @@ class AESCryptor():
 
     def __to16Length(self, text):
         if sys.version_info.major == 3:
-            text = bytes(text, encoding='utf-8')
+            text = bytes(text, encoding="utf-8")
         return text + (b'\0' * ((16 - (len(text) % 16)) % 16))
 
     def encrypt(self, text):

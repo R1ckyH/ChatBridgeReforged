@@ -42,7 +42,7 @@ class Process:
             message = f"[{client}] {msg}"
         return message
 
-    async def proceess_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
+    async def process_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
         if 'action' in msg.keys():
             if msg['action'] == 'login':
                 if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
@@ -66,6 +66,22 @@ class Process:
                 await self.msg_mc_server(msg, self.current_client)
             elif msg['action'] == 'stop':
                 await self.close_connection(writer, self.current_client)
+            elif msg['action'] == 'command':
+                sender = msg['sender']
+                recevier = msg['receiver']
+                command = msg['command']
+                if msg['result']['responded']:
+                    if(self.server.clients[sender]['online']):
+                        await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
+                        self.logger.info(f'{command} result send to {sender}')
+                    else:
+                        self.logger.error(f'Client {sender} is Closed')
+                else:
+                    if(self.server.clients[recevier]['online']):
+                        await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
+                        self.logger.info(f'Send Command {command} to {recevier}')
+                    else:
+                        self.logger.debug(f'Client {recevier} not found')
 
     async def close_connection(self, writer, client):
         self.server.clients[client]['online'] = False
@@ -78,7 +94,7 @@ class Process:
             if client_except != i and self.server.clients[i]['online'] == True:
                 writer = self.server.clients[i]['writer']
                 await self.server.send_msg(writer, str(json.dumps(msg)), i)
-    
+
     async def server_msg(self, msg):
         message = {"action": "message",
             "client": "CBR",
@@ -114,11 +130,12 @@ class Process:
             msg = msg.replace('say ', '')
             await self.server_msg(msg)
         else:
-            self.logger.info('Unknown command use help or ? for help message')
+            self.logger.info('Unknown command, use help or ? for help message')
 
 
 LibVersion = 'v20200116'
 '''
+plugin:##CBR
 数据包格式：
 4 byte长的unsigned int代表长度，随后是所指长度的加密字符串，解密后为一个json
 json格式：
