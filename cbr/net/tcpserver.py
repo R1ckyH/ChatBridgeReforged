@@ -102,25 +102,25 @@ class CBRTCPServer(network):
     async def handle_echo(self, reader, writer : asyncio.StreamWriter):
         addr = writer.get_extra_info('peername')
         self.logger.debug(f"new session started from {addr}")
-        clinet_process = Process(self, self.logger)
+        client_process = Process(self, self.logger)
         while not writer.is_closing():
             try:
-                await asyncio.wait_for(self.server_process(reader, writer, clinet_process), timeout=120)
+                await asyncio.wait_for(self.server_process(reader, writer, client_process), timeout=120)
             except asyncio.TimeoutError as te:
                 self.logger.error(f'Connection time out!{te}')
                 self.logger.bug(exit_now = False)
                 writer.close()
                 self.logger.debug(f'Asyncio writer from {self.addr} closed now')
             except:
-                self.logger.info(f'Connection closed from {clinet_process.current_client}')
-                self.clients[clinet_process.current_client]['online'] = False
+                self.logger.info(f'Connection closed from {client_process.current_client}')
+                self.clients[client_process.current_client]['online'] = False
         # writer.close()
 
-    async def server_process(self, reader, writer, clinet_process : Process):
+    async def server_process(self, reader, writer, client_process : Process):
             addr = writer.get_extra_info('peername')
             msg = await self.receive_msg(reader, addr)
             msg = json.loads(msg)
-            await clinet_process.proceess_msg(msg, reader, writer, addr)
+            await client_process.proceess_msg(msg, reader, writer, addr)
 
     async def input_process(self):
         while self.server.is_serving():
