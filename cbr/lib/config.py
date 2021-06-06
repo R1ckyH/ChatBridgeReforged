@@ -70,8 +70,11 @@ class Config_check:
 
     def _check_config_info(self, data):
         self.logger.debug('Checking config.yml')
-        if not self._check_node(data, CONFIG_STRUCTURE): 
-            self.logger.bug(ValueError('Some config is missing in config.yml'), False)
+        if not self._check_node(data, CONFIG_STRUCTURE):
+            try:
+                raise ValueError('Some config is missing in config.yml')
+            except:
+                self.logger.bug(False)
             self.logger.warning('Please check config.yml carefully')
         else:
             self.logger.info('Checked config')
