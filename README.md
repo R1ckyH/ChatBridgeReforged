@@ -1,7 +1,8 @@
 # Chatbridgerforged
-- v0.0.1-Alpha004
+- v0.0.1-Alpha005
 - only tested for python 3.7.3 and 3.8.6
 - python version should be 3.5+
+- not sure about support of python 3.10
 ## Compare to [ChatBridge](https://github.com/TISUnion/ChatBridge)
 - Better logging
 - use [asyncio](https://docs.python.org/3/library/asyncio.html) for Asynchronous processing
