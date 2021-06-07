@@ -7,7 +7,7 @@ import sys
 
 from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
-from cbr.net.process import Process
+from cbr.net.process import ServerProcess, ClientProcess
 
 class network(AESCryptor):
     def __init__(self, logger : CBRLogger, key):
@@ -68,10 +68,15 @@ class CBRTCPServer(network):
         client_config = self.config_data['clients']
         client_dict = {}
         for i in range(len(client_config)):
-            client_dict.update({client_config[i]['name'] : {
-                'password' : client_config[i]['password'], 
-                'online' : False
-            }})
+            client_dict.update({
+                client_config[i]['name'] : {
+                    'password' : client_config[i]['password'], 
+                    'online' : False,
+                    'reader' : None, 
+                    'writer' : None,
+                    'ping' : None
+                    }
+            })
         return client_dict
 
     async def close_all_connection(self):
@@ -79,7 +84,7 @@ class CBRTCPServer(network):
             if self.clients[i]['online']:
                 writer = self.clients[i]['writer']
                 await self.process.close_connection(writer, i)
-                self.logger.debug(f"Connection of {i} is closed")
+                self.logger.info(f"Close connection to {i}")
 
     async def main(self):
         self.logger.info('Server starting')
@@ -92,17 +97,22 @@ class CBRTCPServer(network):
         readthread = threading.Thread(target = self.wait_for_msg, name = 'INPUT')#fuck asyncio in windows (welcome pull request to give a better solution)
         async with self.server:
             readthread.start()
-            self.process = Process(self, self.logger)
+            self.process = ServerProcess(self, self.logger)
             await self.input_process()
             try:
                 await self.server.serve_forever()
             except RuntimeError:#fuck asyncio raise error
                 return
+    
+
+    def register_process(self, process : ClientProcess, client_name):
+        self.clients[client_name]['process'] = process
+
 
     async def handle_echo(self, reader, writer : asyncio.StreamWriter):
         addr = writer.get_extra_info('peername')
         self.logger.debug(f"new session started from {addr}")
-        client_process = Process(self, self.logger)
+        client_process = ClientProcess(self, self.logger)
         while not writer.is_closing():
             try:
                 await asyncio.wait_for(self.server_process(reader, writer, client_process), timeout=120)
@@ -112,17 +122,19 @@ class CBRTCPServer(network):
                 writer.close()
                 self.logger.debug(f'Asyncio writer from {self.addr} closed now')
             except RuntimeError:
-                self.logger.info(f'Connection closed from {client_process.current_client}')
+                self.logger.debug(f"Connection of {client_process.current_client} is closed")
                 self.clients[client_process.current_client]['online'] = False
                 break
             except:
-                self.logger.info(f'Connection closed from {client_process.current_client}')
-                self.clients[client_process.current_client]['online'] = False
-                #self.logger.bug(False)
+                if client_process.current_client != '':
+                    self.logger.info(f'Connection closed from {client_process.current_client}')
+                    self.clients[client_process.current_client]['online'] = False
+                else:
+                    self.logger.bug(False)
                 break
         # writer.close()
 
-    async def server_process(self, reader, writer, client_process : Process):
+    async def server_process(self, reader, writer, client_process : ClientProcess):
             addr = writer.get_extra_info('peername')
             msg = await self.receive_msg(reader, addr)
             if msg == '':
