@@ -1,4 +1,3 @@
-import logging
 import sys
 
 from binascii import b2a_hex, a2b_hex

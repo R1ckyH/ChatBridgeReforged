@@ -2,6 +2,7 @@
 Entry for CBR
 """
 import sys
+
 from cbr.cbr_server import CBRServer
 
 def main():

@@ -1,14 +1,17 @@
 import asyncio
 import json
+import time
 
 from cbr.lib.logger import CBRLogger
-#from cbr.cbr_server import CBRServer
+#from cbr.net.tcpserver import CBRTCPServer
 
 help_msg = '''====================CBR====================
 help/? for help msg
 list for list clients in config.yml
 stop/end stop server
 stop (client name) stop client connection
+ping ping clients
+ping (client name) ping client
 say msg send msg to clients
 '''
 
@@ -17,23 +20,7 @@ class Process:
     def __init__(self, tcp_server, logger : CBRLogger):
         self.server = tcp_server
         self.logger = logger
-        self.current_client = ''
-
-    def add_new_client(self, reader, writer, name):
-        self.server.clients[name].update({'reader' : reader, 'writer' : writer})
-        self.server.clients[name]['online'] = True
-
-    def login(self, name, password, clients):
-        for i in range(len(clients)):
-            if clients[i]['name'] == name:
-                if clients[i]['password'] == password:
-                    return True
-                else:
-                    self.logger.error(f"Wrong password from client{name}'s login")
-                    self.logger.debug(f"Client password is {password}, not same with {clients[i]['password']} in config.yml")
-                    return False
-        self.logger.error('Client not found in config.yml')
-        return False
+        self.end = 0
 
     def message_formater(self, client, player, msg):
         if player != "":
@@ -42,58 +29,59 @@ class Process:
             message = f"[{client}] {msg}"
         return message
 
-    async def process_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
-        if 'action' in msg.keys():
-            if msg['action'] == 'login':
-                if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
-                    self.add_new_client(reader, writer, msg['name'])
-                    self.current_client = msg['name']
-                    await self.server.send_msg(writer, '{"action": "result","result": "login success"}')
-                    self.logger.info(f'{self.current_client} connected to the server')
-                else:
-                    await self.server.send_msg(writer, '{"action": "result","result": "fail"}')
-                    writer.close()
-                    self.logger.debug(f'Asyncio writer from {addr} closed now')
-            elif msg['action'] == 'keepAlive':
-                await self.server.send_msg(writer,'{"action": "keepAlive", "type": "pong"}')
-            elif msg['action'] == 'message':
-                message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                if msg['player'] != "":
-                    message = f"[{msg['client']}] <{msg['player']}> {msg['message']}"  # chat message
-                else:
-                    message = f"[{msg['client']}] {msg['message']}"
-                self.logger.info(message)
-                await self.msg_mc_server(msg, self.current_client)
-            elif msg['action'] == 'stop':
-                await self.close_connection(writer, self.current_client)
-            elif msg['action'] == 'command':
-                sender = msg['sender']
-                recevier = msg['receiver']
-                command = msg['command']
-                if msg['result']['responded']:
-                    if(self.server.clients[sender]['online']):
-                        await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
-                        self.logger.info(f'{command} result send to {sender}')
-                    else:
-                        self.logger.error(f'Client {sender} is Closed')
-                else:
-                    if(self.server.clients[recevier]['online']):
-                        await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
-                        self.logger.info(f'Send Command {command} to {recevier}')
-                    else:
-                        self.logger.debug(f'Client {recevier} not found')
-
-    async def close_connection(self, writer, client):
-        self.server.clients[client]['online'] = False
+    async def close_connection(self, writer : asyncio.StreamWriter, target):
+        self.server.clients[target]['online'] = False
         if not writer.is_closing():
-            await self.server.send_msg(writer, json.dumps({'action' : 'stop'}), client)
+            await self.server.send_msg(writer, json.dumps({'action' : 'stop'}), target)
             writer.close()
+            await writer.wait_closed()
 
     async def msg_mc_server(self, msg, client_except = ''):
         for i in self.server.clients.keys():
             if client_except != i and self.server.clients[i]['online'] == True:
                 writer = self.server.clients[i]['writer']
                 await self.server.send_msg(writer, str(json.dumps(msg)), i)
+    
+    async def ping_test(self, target):
+        await asyncio.sleep(0.000001)#fuck asyncio again
+        client = self.server.clients[target]
+        if not client['online']:
+            return -2
+        self.logger.debug(f'Ping to {target}')
+        start_time = time.time()
+        await self.server.send_msg(client['writer'], '{"action": "keepAlive", "type": "ping"}', target)
+        await self.ping_result(client['process'])
+        self.logger.debug(f'get ping result from {target}')
+        if self.end == -1:
+            self.logger.debug(f'No response from {target}')
+            return -1
+        return round((self.end - start_time)*1000, 1)
+
+    async def ping_result(self, process):
+        process.ping_end = 0
+        start = time.time()
+        while time.time() - start <= 2:
+            await asyncio.sleep(0.000001)#fuck asyncio
+            if process.ping_end != 0:
+                self.end = process.ping_end
+                process.ping_end = 0
+                return
+        self.end = -1
+
+    def ping_log(self, ping, target):
+        if ping == -2:
+            self.logger.info(f'- {target}: Offline')
+        elif ping == -1:
+            self.logger.info(f'- {target}: No response - time = 2000ms')
+        else:
+            self.logger.info(f'- {target}: Alive - time = {ping}ms')
+
+
+class ServerProcess(Process):
+    def __init__(self, tcp_server, logger : CBRLogger):
+        super().__init__(tcp_server, logger)
+        self.server = tcp_server
+        self.logger = logger
 
     async def server_msg(self, msg):
         message = {"action": "message",
@@ -111,7 +99,17 @@ class Process:
         for i in self.server.clients.keys():
             self.logger.info(f"- {i} : online = {self.server.clients[i]['online']}")
 
-    async def msg_process(self, msg):
+    async def ping_all(self):
+        self.logger.debug('Start ping')
+        for i in self.server.clients.keys():
+            self.server.clients[i]['ping'] = await self.ping_test(i)
+        self.logger.info('Ping clients:')
+        for i in self.server.clients.keys():
+            self.ping_log(self.server.clients[i]['ping'], i)
+
+    async def msg_process(self, msg : str):
+        args = msg.split(' ')
+        length = len(args)
         if msg == 'help' or msg == '?':
             for i in help_msg.splitlines():
                 self.logger.info(i)
@@ -121,16 +119,97 @@ class Process:
             if msg == 'stop' or msg == 'end':
                 await self.server.stop()
             else:
-                args = msg.split(' ')
-                if args[1] in self.server.clients.keys():
+                if length > 1 and args[1] in self.server.clients.keys():
                     await self.close_connection(self.server.clients[args[1]]['writer'], args[1])
                 else:
                     self.logger.info("Client not found")
         elif msg.startswith('say'):
             msg = msg.replace('say ', '')
             await self.server_msg(msg)
+        elif msg.startswith('ping'):
+            if msg == 'ping':
+                await self.ping_all()
+            else:
+                if length > 1 and args[1] in self.server.clients.keys():
+                    target = args[1]
+                    ping = await self.ping_test(target)
+                    self.ping_log(ping, target)
+                else:
+                    self.logger.info("Client not found")
         else:
             self.logger.info('Unknown command, use help or ? for help message')
+
+
+class ClientProcess(Process):
+    def __init__(self, tcp_server, logger : CBRLogger):
+        super().__init__(tcp_server, logger)
+        self.server = tcp_server
+        self.logger = logger
+        self.current_client = ''
+        self.ping_end = 0   
+
+    async def add_new_client(self, reader, writer, name):
+        if self.server.clients[name]['online']:
+            self.logger.debug(f'{name} already exist, stop old connection now')
+            await self.close_connection(self.server.clients[name]['writer'], name)
+            self.logger.info(f"Close connection to {name}")
+        self.server.clients[name]['reader'] = reader
+        self.server.clients[name]['writer'] = writer
+        self.server.clients[name]['online'] = True
+
+    def login(self, name, password, clients):
+        for i in range(len(clients)):
+            if clients[i]['name'] == name:
+                if clients[i]['password'] == password:
+                    return True
+                else:
+                    self.logger.error(f"Wrong password from client{name}'s login")
+                    self.logger.debug(f"Client password is {password}, not same with {clients[i]['password']} in config.yml")
+                    return False
+        self.logger.error('Client not found in config.yml')
+        return False
+
+    async def process_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
+        if 'action' in msg.keys():
+            if msg['action'] == 'login':
+                if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
+                    self.current_client = msg['name']
+                    await self.add_new_client(reader, writer, msg['name'])
+                    await self.server.send_msg(writer, '{"action": "result","result": "login success"}')
+                    self.logger.info(f'{self.current_client} connected to the server')
+                    self.server.register_process(self, self.current_client)
+                else:
+                    await self.server.send_msg(writer, '{"action": "result","result": "fail"}')
+                    writer.close()
+                    self.logger.debug(f'Asyncio writer from {addr} closed now')
+            elif msg['action'] == 'keepAlive':
+                if msg['type'] == 'ping':
+                    await self.server.send_msg(writer, '{"action": "keepAlive", "type": "pong"}')
+                elif msg['type'] == 'pong':
+                    self.ping_end = time.time()
+            elif msg['action'] == 'message':
+                message = self.message_formater(msg['client'], msg['player'], msg['message'])
+                self.logger.info(message)
+                await self.msg_mc_server(msg, self.current_client)
+            elif msg['action'] == 'stop':
+                await self.close_connection(writer, self.current_client)
+                self.logger.info(f'Connection closed from {self.current_client}')
+            elif msg['action'] == 'command':
+                sender = msg['sender']
+                recevier = msg['receiver']
+                command = msg['command']
+                if msg['result']['responded']:
+                    if(self.server.clients[sender]['online']):
+                        await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
+                        self.logger.info(f'{command} result send to {sender}')
+                    else:
+                        self.logger.error(f'Client {sender} is Closed')
+                else:
+                    if(self.server.clients[recevier]['online']):
+                        await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
+                        self.logger.info(f'Send Command {command} to {recevier}')
+                    else:
+                        self.logger.debug(f'Client {recevier} not found')
 
 
 LibVersion = 'v20200116'
