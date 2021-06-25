@@ -7,6 +7,7 @@ class CBRServer:
         self.config = Config()
         self.logger = CBRLogger('CBR', self.config)
         try:
+            self.logger.setup()
             self.config_check = Config_check(self.logger, self.config)
             self.tcp_server = CBRTCPServer(self.logger, self.config.data)
             self.tcp_server.start()
