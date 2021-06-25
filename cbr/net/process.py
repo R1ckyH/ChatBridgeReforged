@@ -41,7 +41,7 @@ class Process:
             if client_except != i and self.server.clients[i]['online'] == True:
                 writer = self.server.clients[i]['writer']
                 await self.server.send_msg(writer, str(json.dumps(msg)), i)
-    
+
     async def ping_test(self, target):
         await asyncio.sleep(0.000001)#fuck asyncio again
         client = self.server.clients[target]
@@ -107,12 +107,15 @@ class ServerProcess(Process):
         for i in self.server.clients.keys():
             self.ping_log(self.server.clients[i]['ping'], i)
 
+    def help_msg(self):
+        for i in help_msg.splitlines():
+            self.logger.info(i)
+
     async def msg_process(self, msg : str):
         args = msg.split(' ')
         length = len(args)
         if msg == 'help' or msg == '?':
-            for i in help_msg.splitlines():
-                self.logger.info(i)
+            self.help_msg()
         elif msg == 'list':
             self.online_list()
         elif msg.startswith('stop') or msg == 'end':
@@ -136,6 +139,8 @@ class ServerProcess(Process):
                     self.ping_log(ping, target)
                 else:
                     self.logger.info("Client not found")
+        elif msg == 'forcedebug':
+            self.logger.forcedebug()
         else:
             self.logger.info('Unknown command, use help or ? for help message')
 
@@ -146,16 +151,21 @@ class ClientProcess(Process):
         self.server = tcp_server
         self.logger = logger
         self.current_client = ''
-        self.ping_end = 0   
+        self.ping_end = 0
 
     async def add_new_client(self, reader, writer, name):
+        reconnect = False
         if self.server.clients[name]['online']:
             self.logger.debug(f'{name} already exist, stop old connection now')
             await self.close_connection(self.server.clients[name]['writer'], name)
-            self.logger.info(f"Close connection to {name}")
+            reconnect = True
         self.server.clients[name]['reader'] = reader
         self.server.clients[name]['writer'] = writer
         self.server.clients[name]['online'] = True
+        if reconnect:
+            self.logger.info(f"Reconnect to {name}")
+        else:
+            self.logger.info(f'{self.current_client} connected to the server')
 
     def login(self, name, password, clients):
         for i in range(len(clients)):
@@ -176,7 +186,6 @@ class ClientProcess(Process):
                     self.current_client = msg['name']
                     await self.add_new_client(reader, writer, msg['name'])
                     await self.server.send_msg(writer, '{"action": "result","result": "login success"}')
-                    self.logger.info(f'{self.current_client} connected to the server')
                     self.server.register_process(self, self.current_client)
                 else:
                     await self.server.send_msg(writer, '{"action": "result","result": "fail"}')
@@ -201,7 +210,7 @@ class ClientProcess(Process):
                 if msg['result']['responded']:
                     if(self.server.clients[sender]['online']):
                         await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
-                        self.logger.info(f'{command} result send to {sender}')
+                        self.logger.info(f'Result of {command} send to {sender}')
                     else:
                         self.logger.error(f'Client {sender} is Closed')
                 else:
@@ -210,6 +219,9 @@ class ClientProcess(Process):
                         self.logger.info(f'Send Command {command} to {recevier}')
                     else:
                         self.logger.debug(f'Client {recevier} not found')
+        elif self.current_client == '':
+            self.logger.warning(f"Unknown connection from {writer.get_extra_info('peername')}")
+            writer.close()
 
 
 LibVersion = 'v20200116'

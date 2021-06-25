@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import struct
 import threading
 import time
@@ -17,7 +18,7 @@ class network(AESCryptor):
     async def receive_msg(self, reader : asyncio.StreamReader, addr):
         data = await reader.read(4)
         if len(data) < 4:
-            return ''
+            return '{}'
         length = struct.unpack('I', data)[0]
         msg = await reader.read(length)
         msg = str(msg, encoding='utf-8')
@@ -63,7 +64,7 @@ class CBRTCPServer(network):
         await self.close_all_connection()
         self.server.close()
         self.logger.info("Server closed")
-    
+
     def setup(self):
         client_config = self.config_data['clients']
         client_dict = {}
@@ -84,10 +85,10 @@ class CBRTCPServer(network):
             if self.clients[i]['online']:
                 writer = self.clients[i]['writer']
                 await self.process.close_connection(writer, i)
-                self.logger.info(f"Close connection to {i}")
+                self.logger.info(f"Closed connection to {i}")
 
     async def main(self):
-        self.logger.info('Server starting')
+        self.logger.info(f'Server starting at pid {os.getpid()}')
         try:
             self.server = await asyncio.start_server(self.handle_echo, self.ip, self.port)
         except OSError:
@@ -103,7 +104,7 @@ class CBRTCPServer(network):
                 await self.server.serve_forever()
             except RuntimeError:#fuck asyncio raise error
                 return
-    
+
 
     def register_process(self, process : ClientProcess, client_name):
         self.clients[client_name]['process'] = process
@@ -124,6 +125,7 @@ class CBRTCPServer(network):
             except RuntimeError:
                 self.logger.debug(f"Connection of {client_process.current_client} is closed")
                 self.clients[client_process.current_client]['online'] = False
+                writer.close()
                 break
             except:
                 if client_process.current_client != '':
@@ -131,16 +133,17 @@ class CBRTCPServer(network):
                     self.clients[client_process.current_client]['online'] = False
                 else:
                     self.logger.bug(False)
+                writer.close()
                 break
         # writer.close()
 
-    async def server_process(self, reader, writer, client_process : ClientProcess):
-            addr = writer.get_extra_info('peername')
-            msg = await self.receive_msg(reader, addr)
-            if msg == '':
-                return
-            msg = json.loads(msg)
-            await client_process.process_msg(msg, reader, writer, addr)
+    async def server_process(self, reader, writer : asyncio.StreamWriter, client_process : ClientProcess):
+        addr = writer.get_extra_info('peername')
+        msg = await self.receive_msg(reader, addr)
+        #print(f"msg:{msg}.{addr}")
+        await asyncio.sleep(0.1)
+        msg = json.loads(msg)
+        await client_process.process_msg(msg, reader, writer, addr)
 
     async def input_process(self):
         while self.server.is_serving():
