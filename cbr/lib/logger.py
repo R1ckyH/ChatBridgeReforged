@@ -1,10 +1,31 @@
 import logging
+import sys
 import traceback
 
 from os import path, mkdir
 
 log_file = 'logs'
 log_path = log_file + "/lastest.log"
+
+logger_black_list = ['ping', 'Result of', '- ', 'Client ', 'Ping client', 'Send Command', 'Unknown ']#for filehandler
+logger_black_arg2 = ['joined', 'left']#for filehandler
+
+
+class StdoutFilter(logging.Filter):
+    def filter(self, record : logging.LogRecord):
+        msg = record.getMessage()
+        args = msg.split(' ')
+        #print(record.levelname)
+        if len(args) == 4:
+            for i in range(len(logger_black_arg2)):
+                if args[2] == logger_black_arg2[i]:
+                    return False
+        for i in range(len(logger_black_list)):
+            if msg.startswith(logger_black_list[i]):
+                return False
+        if record.funcName == 'help_msg':
+            return False
+        return True
 
 
 class CBRLogger(logging.getLoggerClass()):
@@ -14,24 +35,21 @@ class CBRLogger(logging.getLoggerClass()):
             self.debug_all = bool(config.data['debug']['all'])
         else:
             self.debug_all = True
-        self.setup()
 
-    def formatter(self):
-        return logging.Formatter('[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt='%H:%M:%S')
+    def formatter(self, datefmt = None):
+        return logging.Formatter('[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=datefmt)
 
     def setup(self):
         self.checkfile()
-        self.stdout_handler = logging.StreamHandler()
+        self.stdout_handler = logging.StreamHandler(sys.stdout)
         self.file_handler = logging.FileHandler(log_path)
-        self.stdout_handler.setFormatter(self.formatter())
-        self.file_handler.setFormatter(self.formatter())
+        self.stdout_handler.setFormatter(self.formatter('%H:%M:%S'))
+        self.file_handler.setFormatter(self.formatter('%Y-%m-%d %H:%M:%S'))
+        self.file_handler.addFilter(StdoutFilter())
         self.addHandler(self.stdout_handler)
         self.addHandler(self.file_handler)
-        if self.debug_all == True:
-            self.setLevel(logging.DEBUG)
-        else:
-            self.setLevel(logging.INFO)
-    
+        self.setLevel(logging.DEBUG)
+
     def checkfile(self):
         if not path.exists(log_file):
             mkdir(log_file)
@@ -41,11 +59,32 @@ class CBRLogger(logging.getLoggerClass()):
             if error == True:
                 self.error(line, exc_info = False)
             else:
-                self.debug(line, exc_info = False)
+                self.debug(line)
         if exit_now:
             if self.level > logging.DEBUG and not error:
                 self.error('ERROR exist, use debug mode for more information')
             exit(0)
+
+    def debug(self, msg) -> None:#thx xd
+        if self.debug_all:
+            super().debug(msg)
+    
+    #no use
+    '''def restartall(self):
+        self.removeHandler(self.stdout_handler)
+        self.removeHandler(self.file_handler)
+        print(self.hasHandlers())
+        self.addHandler(self.stdout_handler)
+        self.addHandler(self.file_handler)'''
+
+    def forcedebug(self):
+        if not self.debug_all:
+            self.debug_all = True
+            self.info(f'- Forcedebug mode on')
+            self.debug('test')
+        elif self.debug_all:
+            self.debug_all = False
+            self.info('- Debug mode turn off')
 
 
 if __name__ == '__main__':
