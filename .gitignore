@@ -9,4 +9,4 @@ server.py
 servertest.py
 test.py
 test2.py
-*config.yml
+.gitignore
