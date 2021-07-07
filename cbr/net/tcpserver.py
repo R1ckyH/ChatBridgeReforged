@@ -22,7 +22,11 @@ class network(AESCryptor):
         length = struct.unpack('I', data)[0]
         msg = await reader.read(length)
         msg = str(msg, encoding='utf-8')
-        msg = self.decrypt(msg)
+        try:
+            msg = self.decrypt(msg)
+        except:
+            self.logger.bug(exit_now=False)
+            return '{}'
         self.logger.debug(f"Received {msg!r} from {addr!r}")
         return msg
 
@@ -122,6 +126,7 @@ class CBRTCPServer(network):
                 self.logger.bug(exit_now = False)
                 writer.close()
                 self.logger.debug(f'Asyncio writer from {self.addr} closed now')
+                break
             except RuntimeError:
                 self.logger.debug(f"Connection of {client_process.current_client} is closed")
                 self.clients[client_process.current_client]['online'] = False
@@ -141,7 +146,7 @@ class CBRTCPServer(network):
         addr = writer.get_extra_info('peername')
         msg = await self.receive_msg(reader, addr)
         #print(f"msg:{msg}.{addr}")
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.000001)
         msg = json.loads(msg)
         await client_process.process_msg(msg, reader, writer, addr)
 

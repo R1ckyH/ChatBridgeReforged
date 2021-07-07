@@ -188,7 +188,7 @@ class ClientProcess(Process):
                     await self.server.send_msg(writer, '{"action": "result","result": "login success"}')
                     self.server.register_process(self, self.current_client)
                 else:
-                    await self.server.send_msg(writer, '{"action": "result","result": "fail"}')
+                    await self.server.send_msg(writer, '{"action": "result","result": "login fail"}')
                     writer.close()
                     self.logger.debug(f'Asyncio writer from {addr} closed now')
             elif msg['action'] == 'keepAlive':
