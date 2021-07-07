@@ -1,40 +1,37 @@
+from typing import Optional
 import trio
 import json
+import re
 import os
 import struct
 import sys
 import threading
 import time
+import logging
 import traceback
 
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
 from mcdreforged.api.all import *
+from mcdreforged.utils.logger import MCDReforgedLogger
 
 debug_mode = False
 ping_time = 60
 config_file = 'config/ChatBridgeReforged_client.json'
+log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 client = None
 prefix = '!!CBR'
 
 
-def rtext_cmd(txt, msg, cmd):
-    return RText(txt).h(msg).c(RAction.run_command, cmd)
+def rtext_cmd(txt, msg, cmd, color = None, styles = None) -> RTextBase:
+    return RText(txt, color, styles).h(msg).c(RAction.run_command, cmd)
 
-help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
-''' + rtext_cmd('!!CBR help §ashow help message§r', 'click me to show help message', prefix) + '''
-''' + rtext_cmd('!!CBR start §astart ChatBridgeReforged client§r', 'Click me to start', '!!CBR start') + '''
-''' + rtext_cmd('!!CBR stop §astop ChatBridgeReforged client§r', 'Click me to stop', '!!CBR stop') + '''
-''' + rtext_cmd('!!CBR reload §areload ChatBridgeReforged client§r', 'Click me to reload', '!!CBR reload') + '''
-''' + rtext_cmd('!!CBR restart §arestart ChatBridgeReforged client§r', 'Click me to restart', '!!CBR restart') +  '''
-''' + rtext_cmd('!!CBR ping §aping ChatBridgeReforged server§r', 'Click me to ping server', '!!CBR ping') +  '''
-§b-----------------------------------------------§r'''  
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-006-pre2',
-    'name': 'ChatBridgeReforged_Client_mc',
+    'version': '0.0.1-Alpha-006-pre3',
+    'name': 'ChatBridgeReforged Client',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
     'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
@@ -43,31 +40,41 @@ PLUGIN_METADATA = {
     }
 }
 
+class CBRLogger(MCDReforgedLogger):
+    DEFAULT_NAME = 'CBR'
+    
+    def debug(self, *args):
+        if debug_mode:
+            super(MCDReforgedLogger, self).debug(*args)
 
-def out_log(msg : str, error = False, debug = False):
-    msg = msg.replace('§r', '').replace('§d', '').replace('§c', '').replace('§6', '').replace('§e', '').replace('§a', '')
-    heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
-    if error == True:
-        msg = heading + '[ERROR]: ' + msg
-    elif debug_mode == True and debug == True:
-        msg = heading + '[DEBUG]: ' + msg
-    elif debug == False:
-        msg = heading + '[INFO]: ' + msg
-    elif debug_mode == False and debug == True:
-        return
-    print(msg)
-    with open('logs/ChatBridgeReforged_Client_mc.log', 'a+') as log:
-        log.write(msg + '\n')
+    def set_file(self, file_name):
+        if self.file_handler is not None:
+            self.removeHandler(self.file_handler)
+        self.file_handler = logging.FileHandler(file_name, encoding='UTF-8')
+        self.file_handler.setFormatter(self.FILE_FMT)
+        self.addHandler(self.file_handler)
 
 
-def bug_log(error = False):
-    print('bug')
-    for line in traceback.format_exc().splitlines():
-        print(line)
-        if error == True:
-            out_log(line, error = True)
+def show_help(info: Optional[Info] = None):
+    help_msg = '''------ MCDR {1} v{2} -------
+§7{0} help §r显示帮助信息
+§7{0} start §r启动ChatBridge Reforged客户端
+§7{0} stop §r关闭ChatBridge Reforged客户端
+§7{0} reload §r重载ChatBridge Reforged客户端配置
+§7{0} restart §r重启ChatBridge Reforged客户端
+§7{0} ping §r检测至ChatBridge Reforged服务端的延迟
+'''.strip().format(prefix, PLUGIN_METADATA['name'], PLUGIN_METADATA['version'])
+    help_msg_rtext = RTextList()
+    for line in help_msg.splitlines():
+        result = re.search(r'(?<=§7)!!loc[\w ]*(?=§)', line)
+        if result is not None:
+            help_msg_rtext.append(RText(line).c(RAction.suggest_command, result.group()).h('点击以填入 §7{}§r'.format(result.group())))
         else:
-            out_log(line, debug = True)
+            help_msg_rtext.append(line)
+    if isinstance(info, Info):
+        info.get_server().reply(info, help_msg_rtext)
+    else:
+        print(str(help_msg_rtext))
 
 
 def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : ServerInterface = None):
@@ -76,10 +83,10 @@ def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : 
         info = src.get_info()
     if num == 0:
         server.say(msg)
-        out_log(str(msg))
+        logger.info(str(msg))
     elif num == 1:
         server.tell(info.player, msg)
-        out_log(str(msg))
+        logger.info(str(msg))
 
 
 def load_config():
@@ -87,7 +94,7 @@ def load_config():
         with open(config_file, 'r+') as config:
             return json.load(config)
     else:
-        out_log("Config file not Found", error=True)
+        logger.info("Config file not Found", error=True)
         raise FileNotFoundError
 
 class AESCryptor():
@@ -117,21 +124,21 @@ class AESCryptor():
         try:
             result = cryptor.decrypt(a2b_hex(text))
         except TypeError as err:
-            out_log('TypeError when decrypting text', True)
-            out_log('text =', text, True)
+            logger.info('TypeError when decrypting text', True)
+            logger.info('text =', text, True)
             raise err
         except ValueError as err:
-            out_log(err.args, True)
-            out_log('len(text) =' + str(len(text)), True)
+            logger.info(err.args, True)
+            logger.info('len(text) =' + str(len(text)), True)
             raise err
         if sys.version_info.major == 3:
             try:
                 result = str(result, encoding='utf-8')
             except UnicodeDecodeError:
-                out_log('error at decrypt string conversion', True)
-                out_log('raw result = ' + str(result), True)
+                logger.info('error at decrypt string conversion', True)
+                logger.info('raw result = ' + str(result), True)
                 result = str(result, encoding='ISO-8859-1')
-                out_log('ISO-8859-1 = ' + str(result), True)
+                logger.info('ISO-8859-1 = ' + str(result), True)
         return result.rstrip('\0')
 
 
@@ -151,16 +158,16 @@ class network(AESCryptor):
             msg = self.decrypt(msg)
         except:
             return '{}'
-        out_log(f"Received {msg!r} from {addr!r}", debug = True)
+        logger.info(f"Received {msg!r} from {addr!r}", debug = True)
         return msg
 
     async def send_msg(self, client_stream : trio.SocketStream, msg ,target = ''):
         if not client.connected:
-            out_log("Not connected to the server", debug = True)
+            logger.info("Not connected to the server", debug = True)
             return
         if target != '':
             target = 'to ' + target
-        out_log(f"Send: {msg!r} {target}", debug = True)
+        logger.info(f"Send: {msg!r} {target}", debug = True)
         msg = self.encrypt(msg)
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
@@ -193,13 +200,13 @@ class ClientProcess:
         await trio.sleep(0.000001)#for async
         if not self.client.connected:
             return -2
-        out_log(f'Ping to server', debug = True)
+        logger.info(f'Ping to server', debug = True)
         start_time = time.time()
         await self.client.send_msg(self.client.client_stream, '{"action": "keepAlive", "type": "ping"}', 'server')
         await self.ping_result()
-        out_log(f'get ping result from server', debug = True)
+        logger.info(f'get ping result from server', debug = True)
         if self.end == -1:
-            out_log(f'No response from server', debug = True)
+            logger.info(f'No response from server', debug = True)
             return -1
         return round((self.end - start_time)*1000, 1)
 
@@ -214,20 +221,20 @@ class ClientProcess:
 
     def ping_log(self, ping):
         if ping == -2:
-            out_log(f'- Offline')
+            logger.info(f'- Offline')
         elif ping == -1:
-            out_log(f'- No response - time = 2000ms')
+            logger.info(f'- No response - time = 2000ms')
         else:
-            out_log(f'- Alive - time = {ping}ms')
+            logger.info(f'- Alive - time = {ping}ms')
 
 
     async def process_msg(self, msg, client_stream : trio.SocketStream, addr):
         if 'action' in msg.keys():
             if msg['action'] == 'result':
                 if msg['result'] == 'login success':
-                    out_log("Login Success")
+                    logger.info("Login Success")
                 else:
-                    out_log("Login in fail", error = True)
+                    logger.info("Login in fail", error = True)
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
                     await self.client.send_msg(client_stream, '{"action": "keepAlive", "type": "pong"}')
@@ -235,10 +242,10 @@ class ClientProcess:
                     self.end = time.time()
             elif msg['action'] == 'message':
                 message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                out_log(message)
+                logger.info(message)
             elif msg['action'] == 'stop':
                 await self.client.close_connection()
-                out_log(f'Connection closed from server')
+                logger.info(f'Connection closed from server')
             elif msg['action'] == 'command':
                 sender = msg['sender']
                 recevier = msg['receiver']
@@ -246,15 +253,15 @@ class ClientProcess:
                 if msg['result']['responded']:
                     if(self.server.clients[sender]['online']):
                         await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
-                        out_log(f'Result of {command} send to {sender}')
+                        logger.info(f'Result of {command} send to {sender}')
                     else:
-                        out_log(f'Client {sender} is Closed', error = True)
+                        logger.info(f'Client {sender} is Closed', error = True)
                 else:
                     if(self.server.clients[recevier]['online']):
                         await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
-                        out_log(f'Send Command {command} to {recevier}')
+                        logger.info(f'Send Command {command} to {recevier}')
                     else:
-                        out_log(f'Client {recevier} not found', debug = True)
+                        logger.info(f'Client {recevier} not found', debug = True)
 
 class CBRTCPClient(network):
     def __init__(self, config_data):
@@ -276,11 +283,11 @@ class CBRTCPClient(network):
         if self.connected == False:
             threading.Thread(target = trio.run, name = 'CBR', args=(self.start,), daemon = True).start()
         else:
-            out_log("Already Connected to server", debug = True)
+            logger.info("Already Connected to server", debug = True)
     
     async def start(self):
         self.cancelled = False
-        out_log(f"Connecting to {self.ip}:{self.port}")
+        logger.info(f"Connecting to {self.ip}:{self.port}")
         self.client_stream = await trio.open_tcp_stream(self.ip, self.port)
         self.connected = True
         async with trio.open_nursery() as nursery:
@@ -289,9 +296,9 @@ class CBRTCPClient(network):
     def trystop(self):
         if self.connected == True:
             trio.run(self.close_connection)
-            out_log("Closed connection")
+            logger.info("Closed connection")
         else:
-            out_log("Connection already closed", error = True)
+            logger.info("Connection already closed", error = True)
 
     async def close_connection(self, target = ''):
         if not self.client_stream == None and self.connected == True:
@@ -299,20 +306,20 @@ class CBRTCPClient(network):
             await self.client_stream.aclose()
             self.cancelled = True
             self.cancel_scope.cancel()
-            out_log("Connection closed to server", debug = True)
+            logger.info("Connection closed to server", debug = True)
         self.connected = False
 
     def reload(self):
-        out_log("Reload ChatBridgeReforced Client now")
+        logger.info("Reload ChatBridgeReforced Client now")
         trio.run(self.close_connection)
         config = load_config()
         self.setup(config)
-        out_log("Reload Config", debug = True)
+        logger.info("Reload Config", debug = True)
         self.trystart()
     
     async def keep_alive(self):
         while not self.client_stream == None and self.connected:
-            out_log("keep alive", debug = True)
+            logger.info("keep alive", debug = True)
             for i in range(ping_time):
                 await trio.sleep(1)
                 if not self.connected:
@@ -331,7 +338,7 @@ class CBRTCPClient(network):
         except trio.Cancelled and trio.ClosedResourceError:
             self.connected = False
             await trio.sleep(0.0005)
-            out_log("Stop Receive message", debug = True)
+            logger.info("Stop Receive message", debug = True)
             return
         msg = json.loads(msg)
         await self.process.process_msg(msg, self.client_stream, self.ip)
@@ -346,13 +353,13 @@ class CBRTCPClient(network):
             except trio.TooSlowError:
                 await trio.sleep(0.0005)
                 if not self.cancelled:
-                    out_log('Connection time out!', error = True)
-                    out_log('Closed connection to server', debug = True)
+                    logger.info('Connection time out!', error = True)
+                    logger.info('Closed connection to server', debug = True)
                 else:
-                    out_log("Cancel Process", debug = True)
+                    logger.info("Cancel Process", debug = True)
                 break
             except:
-                bug_log()
+                logger.debug()
                 break
         self.connected = False
 
@@ -369,7 +376,7 @@ if __name__ == '__main__':
     while True:
         a = input()
         if a == 'help':
-            out_log(str(help_msg))
+            show_help()
         elif a == 'stop':
             client.trystop()
         elif a == 'start':
@@ -381,45 +388,55 @@ if __name__ == '__main__':
             client.reload()
         elif a == 'forcedebug':
             debug_mode = not debug_mode
-            out_log(f'forcedebug: {debug_mode}')
+            logger.info(f'forcedebug: {debug_mode}')
         elif a == 'test':
             for thread in threading.enumerate(): 
                 print(thread.name)
         elif client.connected:
             trio.run(client.send_msg, client.client_stream, client.process.msg_json_formater(config['name'], '', a))
         else:
-            out_log("Not Connected")
+            logger.info("Not Connected")
 
 @new_thread("CBRProcess")
 def on_info(server : ServerInterface, info : Info):
     global debug_mode
-    msg = info.content
-    if msg.startswith('!!CBR'):
-        #if msg.endswith('<--[HERE]'):
-        #    msg = msg.replace('<--[HERE]', '')
-        args = msg.split(' ')
-        if len(args) == 1 or args[1] == 'help':
-            server.tell(info.player, help_msg)
-        elif args[1] == 'start':
-            client.trystart()
-        elif args[1] == 'stop':
-            client.trystop()
-        elif args[1] == 'reload':
-            client.reload()
-        elif args[1] == 'restart':
-            client.trystop()
-            client.trystart()
-        elif args[1] == 'ping':
-            ping = trio.run(client.process.ping_test)
-            client.process.ping_log(ping)
-        elif args[1] == 'forcedebug':
-            debug_mode = not debug_mode
-            out_log(f'forcedebug: {debug_mode}')
-        elif args[1] == 'test':
-            for thread in threading.enumerate(): 
-                print(thread.name)
-        else:
-            out_log("Command not Found")
+    if info.is_user:
+        args = info.content.strip().split(' ')
+        clen = len(args)
+
+        if args[0] == prefix:
+            # !!CBR [help]
+            if clen == 0 or bool(clen == 1 and args[1] == 'help'):
+                show_help(info)
+            # !!CBR start
+            elif clen == 1 and args[1] == 'start':
+                client.trystart()
+            # !!CBR stop
+            elif clen == 1 and args[1] == 'stop':
+                client.trystop()
+            # !!CBR reload
+            elif clen == 1 and args[1] == 'reload':
+                client.reload()
+            # !!CBR restart
+            elif clen == 1 and args[1] == 'restart':
+                client.trystop()
+                client.trystart()
+            # !!CBR ping
+            elif clen == 1 and args[1] == 'ping':
+                ping = trio.run(client.process.ping_test)
+                client.process.ping_log(ping)
+            # !!CBR forcedebug
+            elif clen == 1 and args[1] == 'forcedebug':
+                debug_mode = not debug_mode
+                logger.info(f'forcedebug: {debug_mode}')
+            # !!CBR test
+            elif clen == 1 and args[1] == 'test':
+                for thread in threading.enumerate(): 
+                    logger.info(thread.name)
+
+            else:
+                server.reply(info, 'Command not found')
+
     elif info.is_player:
         if client == None:
             return
@@ -446,11 +463,13 @@ def on_unload(server):
 
 @new_thread("CBRload")
 def on_load(server, old):
+    global client, logger
     if old != None:
         old.client.trystop()
+    logger = CBRLogger(server)
+    logger.set_file(log_file)
     time.sleep(1)
     print('load')
-    global client
     config = load_config()
     client = CBRTCPClient(config)
     client.trystart()
