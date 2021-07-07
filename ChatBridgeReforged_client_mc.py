@@ -405,6 +405,7 @@ def on_info(server : ServerInterface, info : Info):
         clen = len(args)
 
         if args[0] == prefix:
+            info.cancel_send_to_server()
             # !!CBR [help]
             if clen == 0 or bool(clen == 1 and args[1] == 'help'):
                 show_help(info)
