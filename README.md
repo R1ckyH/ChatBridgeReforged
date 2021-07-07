@@ -1,5 +1,5 @@
 # Chatbridgerforged
-- v0.0.1-Alpha006pre2
+- v0.0.1-Alpha006pre3
 - only tested for python 3.7.3 and 3.8.6
 - python version should be 3.5+
 - not sure about support of python 3.10
