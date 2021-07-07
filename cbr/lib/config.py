@@ -8,7 +8,7 @@ from ruamel import yaml
 #from ruamel.yaml.comments import CommentedMap
 from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = 'v0.0.1-Alpha006-pre2'
+CHATBRIDGEREFORGED_VERSION = 'v0.0.1-Alpha006-pre3'
 DEFAULT_CONFIG_PATH = "cbr/resources/defaultconfig.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
