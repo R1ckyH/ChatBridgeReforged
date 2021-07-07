@@ -1,27 +1,35 @@
-from typing import Optional
-import trio
-import json
 import re
 import os
-import struct
 import sys
-import threading
 import time
+import json
+import trio
+import struct
 import logging
-import traceback
+import threading
 
-from binascii import b2a_hex, a2b_hex
+from ruamel import yaml
+from typing import Optional
 from Crypto.Cipher import AES
-from datetime import datetime
 from mcdreforged.api.all import *
+from binascii import b2a_hex, a2b_hex
 from mcdreforged.utils.logger import MCDReforgedLogger
+
+config_file = 'config/ChatBridgeReforged_client.yml'
+log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 
 debug_mode = False
 ping_time = 60
-config_file = 'config/ChatBridgeReforged_client.json'
-log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 client = None
 prefix = '!!CBR'
+
+default_config = {
+	"name": "testClient",
+	"password": "testPassword",
+	"server_hostname": "localhost",
+	"server_port": 30001,
+	"aes_key": "ThisIstheSecret"
+}
 
 
 def rtext_cmd(txt, msg, cmd, color = None, styles = None) -> RTextBase:
@@ -30,8 +38,8 @@ def rtext_cmd(txt, msg, cmd, color = None, styles = None) -> RTextBase:
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-006-pre3',
-    'name': 'ChatBridgeReforged Client',
+    'version': '0.0.1-Alpha-006-pre3', # 版本号屁股后面加了1
+    'name': 'ChatBridgeReforged Client', # 改了名称, 让它更像一个名称, id没改
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
     'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
@@ -40,6 +48,7 @@ PLUGIN_METADATA = {
     }
 }
 
+# 重写的Logger, 里面所有用到logger的地方都改了
 class CBRLogger(MCDReforgedLogger):
     DEFAULT_NAME = 'CBR'
     
@@ -48,13 +57,18 @@ class CBRLogger(MCDReforgedLogger):
             super(MCDReforgedLogger, self).debug(*args)
 
     def set_file(self, file_name):
+        if not os.path.isdir(os.path.dirname(file_name)):
+            os.makedirs(os.path.dirname(file_name))
+        if not os.path.isfile(file_name):
+            with open(file_name, 'w', encoding='UTF-8') as f:
+                f.write('')
         if self.file_handler is not None:
             self.removeHandler(self.file_handler)
         self.file_handler = logging.FileHandler(file_name, encoding='UTF-8')
         self.file_handler.setFormatter(self.FILE_FMT)
         self.addHandler(self.file_handler)
 
-
+# 重写的插件帮助
 def show_help(info: Optional[Info] = None):
     help_msg = '''------ MCDR {1} v{2} -------
 §7{0} help §r显示帮助信息
@@ -74,7 +88,7 @@ def show_help(info: Optional[Info] = None):
     if isinstance(info, Info):
         info.get_server().reply(info, help_msg_rtext)
     else:
-        print(str(help_msg_rtext))
+        logger.info(str(help_msg_rtext))
 
 
 def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : ServerInterface = None):
@@ -88,14 +102,44 @@ def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : 
         server.tell(info.player, msg)
         logger.info(str(msg))
 
-
+# 重写了config加载, yaml带注释
 def load_config():
-    if os.path.exists(config_file):
-        with open(config_file, 'r+') as config:
-            return json.load(config)
-    else:
-        logger.info("Config file not Found", error=True)
-        raise FileNotFoundError
+    config = None
+    need_save = False
+    if not os.path.isdir(os.path.dirname(config_file)):
+        os.makedirs(os.path.dirname(config_file))
+        logger.info(f'Created {os.path.dirname(config_file)}')
+
+    if not os.path.isfile(config_file):
+        if config is None:
+            config = default_config.copy()
+        need_save = True
+        logger.info('Config file not found, generated')
+    
+    if config is None:
+        with open(config_file, 'r', encoding='UTF-8') as f:
+            config = yaml.round_trip_load(f)
+        if config == None:
+            try:
+                os.remove(config_file)
+            except:
+                pass
+            config = default_config
+            need_save = True
+            logger.info('Invalid config file, regenerated')
+        for key, value in default_config.items():
+            if key not in config:
+                config[key] = value
+                logger.info(f'Invalid config key {key}, using default value {value}')
+                need_save = True
+  
+    if need_save:
+        with open(config_file, 'w', encoding='UTF-8') as f:
+            yaml.round_trip_dump(config, f, allow_unicode = True)
+
+    logger.info('Loaded config file')
+    return config
+
 
 class AESCryptor():
 	# key and text needs to be utf-8 str in python2 or str in python3
@@ -369,14 +413,17 @@ class CBRTCPClient(network):
     client.trystart()
 '''
 
+# 这里也加了logger
 if __name__ == '__main__':
+    logger = CBRLogger(None)
+    logger.set_file(log_file)
     config = load_config()
     client = CBRTCPClient(config)
     client.trystart()
     while True:
         a = input()
         if a == 'help':
-            show_help()
+            show_help() # 当可选参数info不输入时就是直接print
         elif a == 'stop':
             client.trystop()
         elif a == 'start':
@@ -403,10 +450,11 @@ def on_info(server : ServerInterface, info : Info):
     if info.is_user:
         args = info.content.strip().split(' ')
         clen = len(args)
-
+        
+        # 重写了解析指令，不放过一个打错指令的坏孩子
         if args[0] == prefix:
             info.cancel_send_to_server()
-            # !!CBR [help]
+            # !!CBR [help] 插件帮助重写了
             if clen == 0 or bool(clen == 1 and args[1] == 'help'):
                 show_help(info)
             # !!CBR start
@@ -462,6 +510,7 @@ def on_unload(server):
     trio.run(client.close_connection)
     print(client.connected)
 
+# 新增了注册logger, 还有global不写在函数第一行是什么臭习惯???
 @new_thread("CBRload")
 def on_load(server, old):
     global client, logger
