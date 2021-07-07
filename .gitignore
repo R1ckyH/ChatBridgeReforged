@@ -10,3 +10,6 @@ servertest.py
 test.py
 test2.py
 .gitignore
+*config.yml
+tempCodeRunnerFile.py
+*.json
