@@ -1,11 +1,11 @@
 import json
 import os
+import socket
 import struct
 import sys
 import threading
 import time
 import traceback
-import trio
 
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
@@ -14,7 +14,9 @@ from mcdreforged.api.all import *
 
 debug_mode = False
 ping_time = 60
+timeout = 120
 config_file = 'config/ChatBridgeReforged_client.json'
+log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 client = None
 prefix = '!!CBR'
 prefix2 = '!!cbr'
@@ -36,7 +38,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-006-pre3',
+    'version': '0.0.1-Alpha-006-pre4',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -68,8 +70,8 @@ def out_log(msg : str, error = False, debug = False):
         msg = heading + '[DEBUG]: ' + msg
     else:
         msg = heading + '[INFO]: ' + msg
-    print(msg)
-    with open('logs/ChatBridgeReforged_Client_mc.log', 'a+') as log:
+    print(msg + '\n', end = '')
+    with open(log_file, 'a+') as log:
         log.write(msg + '\n')
 
 
@@ -102,6 +104,11 @@ def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : 
 
 def load_config():
     sync = False
+    if not os.path.exists(log_file):
+        os.makedirs(os.path.dirname(log_file), exist_ok = True)
+        out_log('Log file not find', error = True)
+        out_log('Generate new log file')
+
     if not os.path.exists(config_file):
         os.makedirs(os.path.dirname(config_file), exist_ok = True)
         out_log('Config not find', error = True)
@@ -113,7 +120,7 @@ def load_config():
         data = dict(json.load(config))
     for config in DEFAULT_CONFIG.keys():
         if not config in data.keys():
-            out_log(f"Config {config} not found, use default value {DEFAULT_CONFIG[config]}", Error)
+            out_log(f"Config {config} not found, use default value {DEFAULT_CONFIG[config]}", error = True)
             data.update({config : DEFAULT_CONFIG[config]})
             sync = True
     if sync:
@@ -171,12 +178,12 @@ class network(AESCryptor):
         super().__init__(key)
         self.connected = False
 
-    async def receive_msg(self, client_stream : trio.SocketStream, addr):
-        data = await client_stream.receive_some(4)
+    def receive_msg(self, socket : socket.socket, addr):
+        data = socket.recv(4)
         if len(data) < 4:
             return '{}'
         length = struct.unpack('I', data)[0]
-        msg = await client_stream.receive_some(length)
+        msg = socket.recv(length)
         msg = str(msg, encoding='utf-8')
         try:
             msg = self.decrypt(msg)
@@ -185,7 +192,7 @@ class network(AESCryptor):
         out_log(f"Received {msg!r} from {addr!r}", debug = True)
         return msg
 
-    async def send_msg(self, client_stream : trio.SocketStream, msg ,target = ''):
+    def send_msg(self, socket : socket.socket , msg ,target = ''):
         if not client.connected:
             out_log("Not connected to the server", debug = True)
             return
@@ -196,7 +203,7 @@ class network(AESCryptor):
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
-        await client_stream.send_all(msg)
+        socket.sendall(msg)
 
 
 class ClientProcess:
@@ -220,25 +227,23 @@ class ClientProcess:
             }
         return json.dumps(a)
 
-    async def ping_test(self):
-        await trio.sleep(0.000001)#for async
+    def ping_test(self):
         if not self.client.connected:
             return -2
         out_log(f'Ping to server', debug = True)
         start_time = time.time()
-        await self.client.send_msg(self.client.client_stream, '{"action": "keepAlive", "type": "ping"}', 'server')
-        await self.ping_result()
+        self.client.send_msg(self.client.socket, '{"action": "keepAlive", "type": "ping"}', 'server')
+        self.ping_result()
         out_log(f'get ping result from server', debug = True)
         if self.end == -1:
             out_log(f'No response from server', debug = True)
             return -1
         return round((self.end - start_time)*1000, 1)
 
-    async def ping_result(self):
+    def ping_result(self):
         self.end = 0
         start = time.time()
         while time.time() - start <= 2:
-            await trio.sleep(0.000001)#for async
             if self.end != 0:
                 return
         self.end = -1
@@ -252,23 +257,23 @@ class ClientProcess:
             print_msg(f'- Alive - time = {ping}ms', 2, info, server = server)
 
 
-    async def process_msg(self, msg, client_stream : trio.SocketStream, addr):
+    def process_msg(self, msg, socket : socket.socket, addr):
         if 'action' in msg.keys():
             if msg['action'] == 'result':
                 if msg['result'] == 'login success':
-                    out_log("Login Success")
+                    out_log("Login Success")    
                 else:
                     out_log("Login in fail", error = True)
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
-                    await self.client.send_msg(client_stream, '{"action": "keepAlive", "type": "pong"}')
+                    self.client.send_msg(socket, '{"action": "keepAlive", "type": "pong"}')
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
                 message = self.message_formater(msg['client'], msg['player'], msg['message'])
                 print_msg(message, num = 0, server=client.server)
             elif msg['action'] == 'stop':
-                await self.client.close_connection()
+                self.client.close_connection()
                 out_log(f'Connection closed from server')
             elif msg['action'] == 'command':
                 sender = msg['sender']
@@ -276,13 +281,13 @@ class ClientProcess:
                 command = msg['command']
                 if msg['result']['responded']:
                     if(self.server.clients[sender]['online']):
-                        await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
+                        self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
                         out_log(f'Result of {command} send to {sender}')
                     else:
                         out_log(f'Client {sender} is Closed', error = True)
                 else:
                     if(self.server.clients[recevier]['online']):
-                        await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
+                        self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
                         out_log(f'Send Command {command} to {recevier}')
                     else:
                         out_log(f'Client {recevier} not found', debug = True)
@@ -293,7 +298,6 @@ class CBRTCPClient(network):
         self.server = None
 
     def setup(self, config_data):
-        self.client_stream = False
         self.connected = False
         self.cancelled = False
         super().__init__(config_data['aes_key'])
@@ -305,41 +309,46 @@ class CBRTCPClient(network):
     
     def trystart(self, info = None):
         if self.connected == False:
-            threading.Thread(target = trio.run, name = 'CBR', args=(self.start, info), daemon = True).start()
+            threading.Thread(target = self.start, name = 'CBR', args=(info,), daemon = True).start()
         else:
             if info != None:
                 print_msg("Already Connected to server", 2, info, server = self.server, error = True)
             else:
                 out_log("Already Connected to server", debug = True)
 
-    async def start(self, info):
+    def start(self, info):
         self.cancelled = False
         print_msg(f"Connecting to server", 2, info, server = self.server)
         out_log(f'Open connection to {self.ip}:{self.port}')
-        self.client_stream = await trio.open_tcp_stream(self.ip, self.port)
+        self.socket = socket.socket()
+        try:
+            self.socket.connect((self.ip, self.port))
+        except:
+            bug_log(error = True)
+            return
         self.connected = True
-        async with trio.open_nursery() as nursery:
-            nursery.start_soon(self.handle_echo)
+        self.socket.settimeout(timeout)
+        self.handle_echo()
 
     def trystop(self, info = None):
         if self.connected == True:
-            trio.run(self.close_connection)
+            self.close_connection()
             print_msg("Closed connection", 2, info, server = self.server)
         else:
             print_msg("Connection already closed", 2, info, server = self.server)
 
-    async def close_connection(self, target = ''):
-        if not self.client_stream == None and self.connected == True:
+    def close_connection(self, target = ''):
+        if not self.socket == None and self.connected == True:
             self.cancelled = True
-            await self.send_msg(self.client_stream, json.dumps({'action' : 'stop'}), target)
-            await self.client_stream.aclose()
-            self.cancel_scope.cancel()
-            out_log("Connection closed to server")
+            self.send_msg(self.socket, json.dumps({'action' : 'stop'}), target)
+            self.socket.close()
+            time.sleep(0.000001)#for better logging priority
+            out_log("Connection closed to server", debug = True)
         self.connected = False
 
     def reload(self, info = None):
         print_msg("Reload ChatBridgeReforced Client now", 2, info, server = self.server)
-        trio.run(self.close_connection)
+        self.close_connection()
         config = load_config()
         time.sleep(0.1)
         self.setup(config)
@@ -348,50 +357,51 @@ class CBRTCPClient(network):
         time.sleep(0.1)
         print_msg(f"CBR status: Online = {client.connected}", 2, info, server = self.server)
 
-    async def keep_alive(self):
-        while not self.client_stream == None and self.connected:
+    def keep_alive(self):
+        while not self.socket == None and self.connected:
             out_log("keep alive", debug = True)
             for i in range(ping_time):
-                await trio.sleep(1)
+                time.sleep(1)
                 if not self.connected:
                     return
             ping = json.dumps({"action": "keepAlive", "type": "ping"})
             if self.connected:
-                await self.send_msg(self.client_stream, ping)
+                self.send_msg(self.socket, ping)
 
-    async def login(self, name, password):
+    def login(self, name, password):
         msg = {"action": "login", "name": name, "password": password}
-        await self.send_msg(self.client_stream, json.dumps(msg))
+        self.send_msg(self.socket, json.dumps(msg))
 
-    async def client_process(self):
+    def client_process(self):
         try:
-            msg = await self.receive_msg(self.client_stream, self.ip)
-        except trio.Cancelled and trio.ClosedResourceError:
-            self.connected = False
-            await trio.sleep(0.0005)
+            msg = self.receive_msg(self.socket, self.ip)
+        except OSError as er:
             out_log("Stop Receive message", debug = True)
-            return
+            self.connected = False
+            raise er
         msg = json.loads(msg)
-        await self.process.process_msg(msg, self.client_stream, self.ip)
+        self.process.process_msg(msg, self.socket, self.ip)
 
-    async def handle_echo(self):
-        await self.login(self.name, self.password)
-        threading.Thread(target = trio.run, name = 'CBRPing', args = (self.keep_alive,), daemon = True).start()
-        while self.client_stream != None and self.connected == True:
+    def handle_echo(self):
+        self.login(self.name, self.password)
+        threading.Thread(target = self.keep_alive, name = 'CBRPing', daemon = True).start()
+        while self.socket != None and self.connected == True:
             try:
-                with trio.fail_after(120) as self.cancel_scope:
-                    await self.client_process()
-            except trio.TooSlowError:
-                await trio.sleep(0.0005)
-                if not self.cancelled:
-                    out_log('Connection time out!', error = True)
-                    out_log('Closed connection to server', debug = True)
-                else:
-                    out_log("Cancel Process", debug = True)
+                self.client_process()
+            except socket.timeout:
+                out_log('Connection time out!', error = True)
+                out_log('Closed connection to server', debug = True)
                 break
-            except:
+            except ConnectionAbortedError:
+                out_log('Connection closed')
                 bug_log()
                 break
+            except:
+                out_log("Cancel Process", debug = True)
+                if not self.cancelled:
+                    bug_log()
+                break
+            time.sleep(0.1)
         self.connected = False
 
 
@@ -411,7 +421,7 @@ if __name__ == '__main__':
         elif a == 'status':
             print_msg(f"CBR status: Online = {client.connected}", 2)
         elif a == 'ping':
-            ping = trio.run(client.process.ping_test)
+            ping = client.process.ping_test()
             client.process.ping_log(ping)
         elif a == 'reload':
             client.reload()
@@ -426,7 +436,7 @@ if __name__ == '__main__':
             for thread in threading.enumerate(): 
                 print(thread.name)
         elif client.connected:
-            trio.run(client.send_msg, client.client_stream, client.process.msg_json_formater(config['name'], '', a))
+            client.send_msg(client.socket, client.process.msg_json_formater(config['name'], '', a))
         else:
             out_log("Not Connected")
 
@@ -456,7 +466,7 @@ def on_info(server : ServerInterface, info : Info):
             time.sleep(0.1)
             print_msg(f"CBR status: Online = {client.connected}", 2, info, server = server)
         elif args[1] == 'ping':
-            ping = trio.run(client.process.ping_test)
+            ping = client.process.ping_test()
             client.process.ping_log(ping, info, server = server)
         elif args[1] == 'forcedebug' and server.get_permission_level(info.player) > 2:
             debug_mode = not debug_mode
@@ -471,24 +481,22 @@ def on_info(server : ServerInterface, info : Info):
             return
         client.trystart()
         if client.connected:
-            trio.run(client.send_msg, client.client_stream, client.process.msg_json_formater(client.name, info.player, info.content))
+            client.send_msg(client.socket, client.process.msg_json_formater(client.name, info.player, info.content))
 
 
 
 def on_player_joined(server, name, info = None):
     client.trystart()
-    trio.run(client.send_msg, client.client_stream, client.process.msg_json_formater(client.name, '', name + ' joined ' + client.name))
+    client.send_msg(client.socket, client.process.msg_json_formater(client.name, '', name + ' joined ' + client.name))
 
 
 def on_player_left(server, name, info = None):
     client.trystart()
-    trio.run(client.send_msg, client.client_stream, client.process.msg_json_formater(client.name, '', name + ' left ' + client.name))
+    client.send_msg(client.socket, client.process.msg_json_formater(client.name, '', name + ' left ' + client.name))
 
 
 def on_unload(server):
-    print('unload')
-    trio.run(client.close_connection)
-    print(client.connected)
+    client.close_connection()
 
 @new_thread("CBRload")
 def on_load(server, old):
@@ -496,7 +504,6 @@ def on_load(server, old):
     if old != None:
         old.client.trystop()
     time.sleep(1)
-    print('load')
     config = load_config()
     client = CBRTCPClient(config)
     client.trystart()

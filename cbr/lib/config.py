@@ -8,7 +8,7 @@ from ruamel import yaml
 #from ruamel.yaml.comments import CommentedMap
 from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = 'v0.0.1-Alpha006-pre3'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Alpha006-pre4'
 DEFAULT_CONFIG_PATH = "cbr/resources/defaultconfig.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
@@ -38,6 +38,7 @@ class Config:
         if path.exists(CONFIG_PATH):
             with open(CONFIG_PATH, 'r') as cf:
                 self.data = yaml.safe_load(cf)
+            self.data.update({'version' : CHATBRIDGEREFORGED_VERSION})
             return True
         else:
             return False
@@ -82,7 +83,7 @@ class Config_check:
 
     def _check_node(self, data, structure):
         check_node_result = True
-        for i in range(len(data.keys())):
+        for i in range(len(structure)):
             self.logger.debug('Checking for ' + structure[i]['name'])
             struct = structure[i]
             if not struct['name'] in data.keys() or 'sub_structure' in struct.keys() and not self._check_node(data[struct['name']], struct['sub_structure']):
@@ -91,8 +92,8 @@ class Config_check:
             if not 'sub_structure' in struct.keys():
                 if struct['name'] == 'client_servers':
                     msg = 'Client_servers are: '
-                    for i in range(len(data[struct['name']])):
-                        msg = msg + f" {data[struct['name']][i]['name']} "
+                    for j in range(len(data[struct['name']])):
+                        msg = msg + f" {data[struct['name']][j]['name']} "
                     self.logger.debug(msg)
                 else:
                     self.logger.debug(f"Config {struct['name']} values {data[struct['name']]}")
