@@ -27,14 +27,12 @@ clients:
 
 # The language that CBR will use to display information
 # Examples: "en_us", "zh_cn"
+# Not avaliable now
 
 
 # =========================================
 # |           Advance Configure           |
 # =========================================
-
-
-# When set to true, CBR will removed all console font formatter codes in before any message gets printed onto the console
 
 
 # Debug mode switches
