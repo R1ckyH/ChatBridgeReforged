@@ -42,7 +42,7 @@ class CBRLogger(logging.getLoggerClass()):
     def setup(self):
         self.checkfile()
         self.stdout_handler = logging.StreamHandler(sys.stdout)
-        self.file_handler = logging.FileHandler(log_path)
+        self.file_handler = logging.FileHandler(log_path, encoding = 'utf-8')
         self.stdout_handler.setFormatter(self.formatter('%H:%M:%S'))
         self.file_handler.setFormatter(self.formatter('%Y-%m-%d %H:%M:%S'))
         self.file_handler.addFilter(StdoutFilter())

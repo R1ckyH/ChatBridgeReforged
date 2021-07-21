@@ -16,6 +16,7 @@ debug_mode = False
 ping_time = 60
 timeout = 120
 config_file = 'config/ChatBridgeReforged_client.json'
+log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 client = None
 prefix = '!!CBR'
 prefix2 = '!!cbr'
@@ -70,7 +71,7 @@ def out_log(msg : str, error = False, debug = False):
     else:
         msg = heading + '[INFO]: ' + msg
     print(msg + '\n', end = '')
-    with open('logs/ChatBridgeReforged_Client_mc.log', 'a+') as log:
+    with open(log_file, 'a+') as log:
         log.write(msg + '\n')
 
 
@@ -103,6 +104,11 @@ def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : 
 
 def load_config():
     sync = False
+    if not os.path.exists(log_file):
+        os.makedirs(os.path.dirname(log_file), exist_ok = True)
+        out_log('Log file not find', error = True)
+        out_log('Generate new log file')
+
     if not os.path.exists(config_file):
         os.makedirs(os.path.dirname(config_file), exist_ok = True)
         out_log('Config not find', error = True)
@@ -386,11 +392,16 @@ class CBRTCPClient(network):
                 out_log('Connection time out!', error = True)
                 out_log('Closed connection to server', debug = True)
                 break
+            except ConnectionAbortedError:
+                out_log('Connection closed')
+                bug_log()
+                break
             except:
                 out_log("Cancel Process", debug = True)
                 if not self.cancelled:
                     bug_log()
                 break
+            time.sleep(0.1)
         self.connected = False
 
 
