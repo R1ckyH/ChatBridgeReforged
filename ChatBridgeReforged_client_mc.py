@@ -16,6 +16,7 @@ debug_mode = False
 ping_time = 60
 timeout = 120
 config_file = 'config/ChatBridgeReforged_client.json'
+log_file = 'logs/ChatBridgeReforged_Client_mc.log'
 client = None
 prefix = '!!CBR'
 prefix2 = '!!cbr'
@@ -37,7 +38,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-006-pre4',
+    'version': '0.0.1-Alpha-007',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -70,7 +71,7 @@ def out_log(msg : str, error = False, debug = False):
     else:
         msg = heading + '[INFO]: ' + msg
     print(msg + '\n', end = '')
-    with open('logs/ChatBridgeReforged_Client_mc.log', 'a+') as log:
+    with open(log_file, 'a+') as log:
         log.write(msg + '\n')
 
 
@@ -103,6 +104,11 @@ def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : 
 
 def load_config():
     sync = False
+    if not os.path.exists(log_file):
+        os.makedirs(os.path.dirname(log_file), exist_ok = True)
+        out_log('Log file not find', error = True)
+        out_log('Generate new log file')
+
     if not os.path.exists(config_file):
         os.makedirs(os.path.dirname(config_file), exist_ok = True)
         out_log('Config not find', error = True)
@@ -265,26 +271,25 @@ class ClientProcess:
                     self.end = time.time()
             elif msg['action'] == 'message':
                 message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                print_msg(message, num = 0, server=client.server)
+                print_msg(message, num = 0, server = self.client.server)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 out_log(f'Connection closed from server')
             elif msg['action'] == 'command':
-                sender = msg['sender']
-                recevier = msg['receiver']
                 command = msg['command']
-                if msg['result']['responded']:
-                    if(self.server.clients[sender]['online']):
-                        self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
-                        out_log(f'Result of {command} send to {sender}')
+                msg['result']['responded'] = True
+                if(self.client.server != None and self.client.server.is_rcon_running()):
+                    result = self.client.server.rcon_query(command)
+                    print(result)
+                    if(result != None):
+                        msg['result']['type'] = 0
+                        msg['result']['result'] = result
                     else:
-                        out_log(f'Client {sender} is Closed', error = True)
+                        msg['result']['type'] = 1
                 else:
-                    if(self.server.clients[recevier]['online']):
-                        self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
-                        out_log(f'Send Command {command} to {recevier}')
-                    else:
-                        out_log(f'Client {recevier} not found', debug = True)
+                    msg['result']['type'] = 2
+                self.client.send_msg(socket, json.dumps(msg))
+
 
 class CBRTCPClient(network):
     def __init__(self, config_data):
@@ -312,7 +317,7 @@ class CBRTCPClient(network):
 
     def start(self, info):
         self.cancelled = False
-        print_msg(f"Connecting to server", 2, info, server = self.server)
+        print_msg(f"Connecting to server with client {self.name}", 2, info, server = self.server)
         out_log(f'Open connection to {self.ip}:{self.port}')
         self.socket = socket.socket()
         try:
@@ -386,11 +391,16 @@ class CBRTCPClient(network):
                 out_log('Connection time out!', error = True)
                 out_log('Closed connection to server', debug = True)
                 break
+            except ConnectionAbortedError:
+                out_log('Connection closed')
+                bug_log()
+                break
             except:
                 out_log("Cancel Process", debug = True)
                 if not self.cancelled:
                     bug_log()
                 break
+            time.sleep(0.1)
         self.connected = False
 
 
