@@ -119,14 +119,12 @@ class CBRTCPServer(network):
                     self.logger.debug("Cancel Process")
                 break
             except trio.BrokenResourceError and trio.ClosedResourceError:
-                print(1)
                 self.logger.debug("Process broken")
                 break
             except trio.Cancelled:
                 self.logger.debug(f"Cancel Process to {client_process.current_client}")
                 break
             except:
-                print(1)
                 self.logger.bug(exit_now = False)
                 break
         client_process.cancelled = True
