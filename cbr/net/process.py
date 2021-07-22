@@ -1,6 +1,7 @@
-import asyncio
 import json
 import time
+import trio
+import threading
 
 from cbr.lib.logger import CBRLogger
 #from cbr.net.tcpserver import CBRTCPServer
@@ -13,6 +14,7 @@ stop (client name) stop client connection
 ping ping clients
 ping (client name) ping client
 say msg send msg to clients
+cmd (client name) send cmd to client
 '''
 
 
@@ -20,7 +22,6 @@ class Process:
     def __init__(self, tcp_server, logger : CBRLogger):
         self.server = tcp_server
         self.logger = logger
-        self.end = 0
 
     def message_formater(self, client, player, msg):
         if player != "":
@@ -29,44 +30,37 @@ class Process:
             message = f"[{client}] {msg}"
         return message
 
-    async def close_connection(self, writer : asyncio.StreamWriter, target):
+    async def close_connection(self, stream : trio.SocketStream, target):
         self.server.clients[target]['online'] = False
-        if not writer.is_closing():
-            await self.server.send_msg(writer, json.dumps({'action' : 'stop'}), target)
-            writer.close()
-            await writer.wait_closed()
+        await self.server.send_msg(stream, json.dumps({'action' : 'stop'}), target)
+        await stream.aclose()
+        process = self.server.clients[target]['process']
+        process.cancelled = True
+        if process.cancel_scope != None:
+            process.cancel_scope.cancel()
 
     async def msg_mc_server(self, msg, client_except = ''):
         for i in self.server.clients.keys():
             if client_except != i and self.server.clients[i]['online'] == True:
-                writer = self.server.clients[i]['writer']
-                await self.server.send_msg(writer, str(json.dumps(msg)), i)
+                stream = self.server.clients[i]['stream']
+                await self.server.send_msg(stream, str(json.dumps(msg)), i)
 
     async def ping_test(self, target):
-        await asyncio.sleep(0.000001)#fuck asyncio again
         client = self.server.clients[target]
         if not client['online']:
             return -2
         self.logger.debug(f'Ping to {target}')
-        start_time = time.time()
-        await self.server.send_msg(client['writer'], '{"action": "keepAlive", "type": "ping"}', target)
-        await self.ping_result(client['process'])
-        self.logger.debug(f'get ping result from {target}')
-        if self.end == -1:
+        client['process'].ping_end = -1
+        with trio.move_on_after(2) as client['pinglock']:
+            start_time = time.time()
+            await self.server.send_msg(client['stream'], '{"action": "keepAlive", "type": "ping"}', target)
+            await trio.sleep(2)
+        if client['process'].ping_end == -1:
             self.logger.debug(f'No response from {target}')
             return -1
-        return round((self.end - start_time)*1000, 1)
-
-    async def ping_result(self, process):
-        process.ping_end = 0
-        start = time.time()
-        while time.time() - start <= 2:
-            await asyncio.sleep(0.000001)#fuck asyncio
-            if process.ping_end != 0:
-                self.end = process.ping_end
-                process.ping_end = 0
-                return
-        self.end = -1
+        ping = (client['process'].ping_end - start_time) * 1000
+        self.logger.debug(f'get ping result from {target}:{ping}')
+        return round(ping, 1)
 
     def ping_log(self, ping, target):
         if ping == -2:
@@ -82,6 +76,7 @@ class ServerProcess(Process):
         super().__init__(tcp_server, logger)
         self.server = tcp_server
         self.logger = logger
+        self.cancelled = False
 
     async def server_msg(self, msg):
         message = {"action": "message",
@@ -111,6 +106,19 @@ class ServerProcess(Process):
         for i in help_msg.splitlines():
             self.logger.info(i)
 
+    async def send_cmd(self, cmd, target):
+        msg = {
+            "action": "command",
+            "sender": "CBR",
+            "receiver": target,
+            "command": cmd,
+            "result":
+            {
+                "responded": False
+            }
+        }
+        await self.server.send_msg(self.server.clients[target]['stream'], json.dumps(msg))
+
     async def msg_process(self, msg : str):
         args = msg.split(' ')
         length = len(args)
@@ -123,9 +131,9 @@ class ServerProcess(Process):
                 await self.server.stop()
             else:
                 if length > 1 and args[1] in self.server.clients.keys():
-                    await self.close_connection(self.server.clients[args[1]]['writer'], args[1])
+                    await self.close_connection(self.server.clients[args[1]]['stream'], args[1])
                 else:
-                    self.logger.info("Client not found")
+                    self.logger.error("Client not found")
         elif msg.startswith('say'):
             msg = msg.replace('say ', '')
             await self.server_msg(msg)
@@ -138,11 +146,24 @@ class ServerProcess(Process):
                     ping = await self.ping_test(target)
                     self.ping_log(ping, target)
                 else:
-                    self.logger.info("Client not found")
+                    self.logger.error("Client not found")
+        elif msg == 'test':
+            for thread in threading.enumerate(): 
+                print(thread.name)
+        elif msg.startswith('cmd'):
+            if length > 1 and args[1] in self.server.clients.keys():
+                target = args[1]
+                if self.server.clients[target]['online']:
+                    cmd = msg.replace('cmd ' + args[1] + ' ', '')
+                    await self.send_cmd(cmd, target = args[1])
+                else:
+                    self.logger.error("Client not online")
+            else:
+                self.logger.error("Client not found")
         elif msg == 'forcedebug':
             self.logger.forcedebug()
         else:
-            self.logger.info('Unknown command, use help or ? for help message')
+            self.logger.error('Unknown command, use help or ? for help message')
 
 
 class ClientProcess(Process):
@@ -152,15 +173,15 @@ class ClientProcess(Process):
         self.logger = logger
         self.current_client = ''
         self.ping_end = 0
+        self.cancelled = False
 
-    async def add_new_client(self, reader, writer, name):
+    async def add_new_client(self, stream : trio.SocketStream, name):
         reconnect = False
         if self.server.clients[name]['online']:
             self.logger.debug(f'{name} already exist, stop old connection now')
-            await self.close_connection(self.server.clients[name]['writer'], name)
+            await self.close_connection(self.server.clients[name]['stream'], name)
             reconnect = True
-        self.server.clients[name]['reader'] = reader
-        self.server.clients[name]['writer'] = writer
+        self.server.clients[name]['stream'] = stream
         self.server.clients[name]['online'] = True
         if reconnect:
             self.logger.info(f"Reconnect to {name}")
@@ -179,49 +200,57 @@ class ClientProcess(Process):
         self.logger.error('Client not found in config.yml')
         return False
 
-    async def process_msg(self, msg, reader : asyncio.StreamReader, writer : asyncio.StreamWriter, addr):
+    async def process_msg(self, msg, stream : trio.SocketStream, addr):
         if 'action' in msg.keys():
             if msg['action'] == 'login':
                 if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
                     self.current_client = msg['name']
-                    await self.add_new_client(reader, writer, msg['name'])
-                    await self.server.send_msg(writer, '{"action": "result","result": "login success"}')
+                    await self.add_new_client(stream, msg['name'])
+                    await self.server.send_msg(stream, '{"action": "result","result": "login success"}')
                     self.server.register_process(self, self.current_client)
                 else:
-                    await self.server.send_msg(writer, '{"action": "result","result": "login fail"}')
-                    writer.close()
-                    self.logger.debug(f'Asyncio writer from {addr} closed now')
+                    await self.server.send_msg(stream, '{"action": "result","result": "login fail"}')
+                    stream.aclose()
+                    self.logger.debug(f'connection from {addr} closed now')
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
-                    await self.server.send_msg(writer, '{"action": "keepAlive", "type": "pong"}')
+                    await self.server.send_msg(stream, '{"action": "keepAlive", "type": "pong"}')
                 elif msg['type'] == 'pong':
                     self.ping_end = time.time()
+                    self.server.clients[self.current_client]['pinglock'].cancel()
             elif msg['action'] == 'message':
                 message = self.message_formater(msg['client'], msg['player'], msg['message'])
                 self.logger.info(message)
                 await self.msg_mc_server(msg, self.current_client)
             elif msg['action'] == 'stop':
-                await self.close_connection(writer, self.current_client)
+                await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
             elif msg['action'] == 'command':
                 sender = msg['sender']
-                recevier = msg['receiver']
+                receiver = msg['receiver']
                 command = msg['command']
                 if msg['result']['responded']:
-                    if(self.server.clients[sender]['online']):
-                        await self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
+                    if sender == 'CBR':
+                        if msg['result']['type'] == 0:
+                            self.logger.info(f"Command to {receiver} finished, result: {msg['result']['result']}")
+                        elif msg['result']['type'] == 1:
+                            self.logger.error(f"Command to {receiver} failed")
+                        elif msg['result']['type'] == 2:
+                            self.logger.error(f"Client {receiver} does not connected to rcon")
+                    elif self.server.clients[sender]['online']:
+                        await self.server.send_msg(self.server.clients[sender]['stream'], json.dumps(msg), sender)
                         self.logger.info(f'Result of {command} send to {sender}')
                     else:
                         self.logger.error(f'Client {sender} is Closed')
                 else:
-                    if(self.server.clients[recevier]['online']):
-                        await self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
-                        self.logger.info(f'Send Command {command} to {recevier}')
+                    if self.server.clients[receiver]['online']:
+                        await self.server.send_msg(self.server.clients[receiver]['stream'], json.dumps(msg), receiver)
+                        self.logger.info(f'Send Command {command} to {receiver}')
                     else:
-                        self.logger.debug(f'Client {recevier} not found')
+                        self.logger.error(f'Client {receiver} not found')
         elif self.current_client == '':
-            self.logger.warning(f"Unknown connection from {writer.get_extra_info('peername')}")
-            writer.close()
+            self.logger.warning(f"Unknown connection from {stream.socket.getpeername()}")
+            self.cancelled = True
 
 
 LibVersion = 'v20200116'
@@ -258,6 +287,19 @@ json格式：
 	"action": "stop"
 }
 
+保持链接
+sender -> receiver
+{
+	"action": "keepAlive",
+	"type": "ping"
+}
+receiver -> sender
+{
+	"action": "keepAlive",
+	"type": "pong"
+}
+等待KeepAliveTimeWait秒无响应即可中断连接
+
 调用指令：
 clientA -> server -> clientB
 {
@@ -265,7 +307,7 @@ clientA -> server -> clientB
 	"sender": "CLIENT_A_NAME",
 	"receiver": "CLIENT_B_NAME",
 	"command": "COMMAND",
-	"result": 
+	"result":
 	{
 		"responded": false
 	}
@@ -282,32 +324,22 @@ clientA <- server <- clientB
 		...
 	}
 }
-	[!!stats]
-	"result": 
-	{
-		"responded": xxx,
-		"type": int,  // 0: good, 1: stats not found, 2: stats helper not found
-		"stats_name": "aaa.bbb", // if good
-		"result": "STRING" // if good
-	}
-	[!!online]
-	"result": 
+    [glist] //example
+    "command": "glist"
+	"result":
 	{
 		"responded": xxx,
 		"type": int,  // 0: good, 1: rcon query fail, 2: rcon not found
 		"result": "STRING" // if good
 	}
 
-保持链接
-sender -> receiver
-{
-	"action": "keepAlive",
-	"type": "ping"
-}
-receiver -> sender
-{
-	"action": "keepAlive",
-	"type": "pong"
-}
-等待KeepAliveTimeWait秒无响应即可中断连接
+may be todo:
+	[!!stats]
+	"result":
+	{
+		"responded": xxx,
+		"type": int,  // 0: good, 1: stats not found, 2: stats helper not found
+		"stats_name": "aaa.bbb", // if good
+		"result": "STRING" // if good
+	}
 '''

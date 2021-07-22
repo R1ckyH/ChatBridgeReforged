@@ -38,7 +38,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-006-pre4',
+    'version': '0.0.1-Alpha-007-fix2',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -76,7 +76,7 @@ def out_log(msg : str, error = False, debug = False):
 
 
 def bug_log(error = False):
-    print('bug')
+    print('[CBR] bug exist')
     for line in traceback.format_exc().splitlines():
         if error == True:
             out_log(line, error = True)
@@ -203,7 +203,12 @@ class network(AESCryptor):
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
-        socket.sendall(msg)
+        try:
+            socket.sendall(msg)
+        except BrokenPipeError:
+            out_log("Connection closed from server")
+            client.connected = False
+            client.close_connection()
 
 
 class ClientProcess:
@@ -271,26 +276,25 @@ class ClientProcess:
                     self.end = time.time()
             elif msg['action'] == 'message':
                 message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                print_msg(message, num = 0, server=client.server)
+                print_msg(message, num = 0, server = self.client.server)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 out_log(f'Connection closed from server')
             elif msg['action'] == 'command':
-                sender = msg['sender']
-                recevier = msg['receiver']
                 command = msg['command']
-                if msg['result']['responded']:
-                    if(self.server.clients[sender]['online']):
-                        self.server.send_msg(self.server.clients[sender]['writer'], json.dumps(msg), sender)
-                        out_log(f'Result of {command} send to {sender}')
+                msg['result']['responded'] = True
+                if(self.client.server != None and self.client.server.is_rcon_running()):
+                    result = self.client.server.rcon_query(command)
+                    print(result)
+                    if(result != None):
+                        msg['result']['type'] = 0
+                        msg['result']['result'] = result
                     else:
-                        out_log(f'Client {sender} is Closed', error = True)
+                        msg['result']['type'] = 1
                 else:
-                    if(self.server.clients[recevier]['online']):
-                        self.server.send_msg(self.server.clients[recevier]['writer'], json.dumps(msg), recevier)
-                        out_log(f'Send Command {command} to {recevier}')
-                    else:
-                        out_log(f'Client {recevier} not found', debug = True)
+                    msg['result']['type'] = 2
+                self.client.send_msg(socket, json.dumps(msg))
+
 
 class CBRTCPClient(network):
     def __init__(self, config_data):
@@ -318,7 +322,7 @@ class CBRTCPClient(network):
 
     def start(self, info):
         self.cancelled = False
-        print_msg(f"Connecting to server", 2, info, server = self.server)
+        print_msg(f"Connecting to server with client {self.name}", 2, info, server = self.server)
         out_log(f'Open connection to {self.ip}:{self.port}')
         self.socket = socket.socket()
         try:
@@ -502,7 +506,10 @@ def on_unload(server):
 def on_load(server, old):
     global client
     if old != None:
-        old.client.trystop()
+        try:
+            old.client.trystop()
+        except:
+            bug_log(error = True)
     time.sleep(1)
     config = load_config()
     client = CBRTCPClient(config)
