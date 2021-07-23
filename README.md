@@ -1,6 +1,6 @@
 # Chatbridgerforged
 - Alpha version, please bear the risk if you use it
-- v0.0.1-Alpha007
+- v0.0.1-Alpha
 - only tested for python 3.7 and 3.8
 - python version should be 3.5+
 - `pip install trio` to install [trio](https://trio.readthedocs.io/)

@@ -36,8 +36,8 @@ class network(AESCryptor):
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
-        await stream.send_all(msg)
-        await stream.wait_send_all_might_not_block()
+        async with trio.Lock():
+            await stream.send_all(msg)
 
 
 class CBRTCPServer(network):

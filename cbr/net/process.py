@@ -233,7 +233,6 @@ class ClientProcess(Process):
                     if sender == 'CBR':
                         if msg['result']['type'] == 0:
                             self.logger.info(f"Command to {receiver} finished, result: {msg['result']['result']}")
-                            print(msg['result']['result'])
                         elif msg['result']['type'] == 1:
                             self.logger.error(f"Command to {receiver} failed")
                         elif msg['result']['type'] == 2:

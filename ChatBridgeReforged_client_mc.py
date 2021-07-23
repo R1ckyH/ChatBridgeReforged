@@ -38,7 +38,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Alpha-007',
+    'version': '0.0.1-Alpha-007-fix2',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -76,7 +76,7 @@ def out_log(msg : str, error = False, debug = False):
 
 
 def bug_log(error = False):
-    print('bug')
+    print('[CBR] bug exist')
     for line in traceback.format_exc().splitlines():
         if error == True:
             out_log(line, error = True)
@@ -203,7 +203,12 @@ class network(AESCryptor):
         if sys.version_info.major == 3:
             msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
-        socket.sendall(msg)
+        try:
+            socket.sendall(msg)
+        except BrokenPipeError:
+            out_log("Connection closed from server")
+            client.connected = False
+            client.close_connection()
 
 
 class ClientProcess:
@@ -501,7 +506,10 @@ def on_unload(server):
 def on_load(server, old):
     global client
     if old != None:
-        old.client.trystop()
+        try:
+            old.client.trystop()
+        except:
+            bug_log(error = True)
     time.sleep(1)
     config = load_config()
     client = CBRTCPClient(config)
