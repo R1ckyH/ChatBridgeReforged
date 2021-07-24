@@ -10,7 +10,7 @@ import traceback
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
-from mcdreforged.api.all import *
+from utils.rtext import *
 
 debug_mode = False
 ping_time = 60
@@ -31,7 +31,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 ''' + rtext_cmd(f'{prefix} help §ashow help message§r', 'click me to show help message', f'{prefix} help') + '''
 ''' + rtext_cmd(f'{prefix} start §astart ChatBridgeReforged client§r', 'Click me to start', f'{prefix} start') + '''
 ''' + rtext_cmd(f'{prefix} stop §astop ChatBridgeReforged client§r', 'Click me to stop', f'{prefix} stop') + '''
-''' + rtext_cmd(f'{prefix} status §ashow status ChatBridgeReforged client§r', 'Click me to show status', f'{prefix} status') + '''
+''' + rtext_cmd(f'{prefix} stauts §ashow status ChatBridgeReforged client§r', 'Click me to show status', f'{prefix} status') + '''
 ''' + rtext_cmd(f'{prefix} reload §areload ChatBridgeReforged client§r', 'Click me to reload', f'{prefix} reload') + '''
 ''' + rtext_cmd(f'{prefix} restart §arestart ChatBridgeReforged client§r', 'Click me to restart', f'{prefix} restart') +  '''
 ''' + rtext_cmd(f'{prefix} ping §aping ChatBridgeReforged server§r', 'Click me to ping server', f'{prefix} ping') +  '''
@@ -45,7 +45,7 @@ PLUGIN_METADATA = {
     'author': 'ricky',
     'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
     'dependencies': {
-        'mcdreforged': '>=1.3.0'
+        'mcdreforged': '>=1.3.0'##0.9.x+
     }
 }
 
@@ -85,7 +85,7 @@ def bug_log(error = False):
             out_log(line, debug = True)
 
 
-def print_msg(msg, num, info: Info = None, src : CommandSource = None, server : ServerInterface = None, error = False, debug = False):
+def print_msg(msg, num, info = None, src = None, server = None, error = False, debug = False):
     if src != None:
         server = src.get_server()
         info = src.get_info()
@@ -445,12 +445,10 @@ if __name__ == '__main__':
         else:
             out_log("Not Connected")
 
-@new_thread("CBRProcess")
-def on_info(server : ServerInterface, info : Info):
+def on_info(server, info):
     global debug_mode
     msg = info.content
     if msg.startswith(prefix) or msg.startswith(prefix2):
-        info.cancel_send_to_server()
         #if msg.endswith('<--[HERE]'):
         #    msg = msg.replace('<--[HERE]', '')
         args = msg.split(' ')
@@ -510,7 +508,8 @@ def on_load(server, old):
             old.client.trystop()
         except:
             bug_log(error = True)
-    server.register_help_message(prefix, "ChatBridgeReforged")
+    server.add_help_message(prefix, "ChatBridgeReforged")
+    time.sleep(1)
     config = load_config()
     client = CBRTCPClient(config)
     client.trystart()

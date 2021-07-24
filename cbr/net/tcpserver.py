@@ -7,6 +7,8 @@ import sys
 from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
 from cbr.net.process import ServerProcess, ClientProcess
+from cbr.plugin.plugins import plugins
+
 
 class network(AESCryptor):
     def __init__(self, logger : CBRLogger, key):
@@ -45,9 +47,11 @@ class CBRTCPServer(network):
         super().__init__(logger, config_data['server_setting']['aes_key'])
         self.logger = logger
         self.config_data = config_data
+        self.version = config_data['version']
         self.ip = config_data['server_setting']['ip_address']
         self.port = config_data['server_setting']['port']
         self.clients = self.setup()
+        self.plugin = plugins(self)
 
     def start(self):
         trio.run(self.run)
@@ -76,9 +80,12 @@ class CBRTCPServer(network):
                 client_config[i]['name'] : {
                     'password' : client_config[i]['password'], 
                     'online' : False,
+                    'type' : False,
                     'stream' : None,
                     'ping' : None,
-                    'pinglock' : None
+                    'pinglock' : None,
+                    'cmdlock' : None,
+                    'cmdresult' : None
                     }
             })
         return client_dict
@@ -96,7 +103,7 @@ class CBRTCPServer(network):
         try:
             async with trio.open_nursery() as self.nusery:
                 self.nusery.start_soon(self.start_server)
-                self.logger.info(f'The Server is now serving on {self.ip}')
+                self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
                 self.nusery.start_soon(trio.to_thread.run_sync, self.input_process)
         except KeyboardInterrupt:
             await self.stop()
@@ -108,34 +115,35 @@ class CBRTCPServer(network):
         addr = stream.socket.getpeername()
         self.logger.debug(f"new session started from {addr}")
         client_process = ClientProcess(self, self.logger)
-        while client_process.cancelled == False:
-            try:
-                with trio.fail_after(120) as client_process.cancel_scope:
-                    await self.server_process(stream, client_process, addr)
-            except trio.TooSlowError:
-                if not client_process.cancelled:
-                    self.logger.error('Connection time out!')
-                else:
-                    self.logger.debug("Cancel Process")
-                break
-            except trio.BrokenResourceError and trio.ClosedResourceError:
-                self.logger.debug("Process broken")
-                break
-            except trio.Cancelled:
-                self.logger.debug(f"Cancel Process to {client_process.current_client}")
-                break
-            except:
-                self.logger.bug(exit_now = False)
-                break
-        client_process.cancelled = True
-        if client_process.current_client != '':
-            self.logger.info(f'Closed Process to {client_process.current_client}')
-            self.clients[client_process.current_client]['online'] = False
+        async with trio.open_nursery() as nursery:
+            while client_process.cancelled == False:
+                try:
+                    with trio.fail_after(120) as client_process.cancel_scope:
+                        await self.server_process(stream, client_process, addr, nursery)
+                except trio.TooSlowError:
+                    if not client_process.cancelled:
+                        self.logger.error('Connection time out!')
+                    else:
+                        self.logger.debug("Cancel Process")
+                    break
+                except trio.BrokenResourceError and trio.ClosedResourceError:
+                    self.logger.debug("Process broken")
+                    break
+                except trio.Cancelled:
+                    self.logger.debug(f"Cancel Process to {client_process.current_client}")
+                    break
+                except:
+                    self.logger.bug(exit_now = False)
+                    break
+            client_process.cancelled = True
+            if client_process.current_client != '':
+                self.logger.info(f'Closed Process to {client_process.current_client}')
+                self.clients[client_process.current_client]['online'] = False
 
-    async def server_process(self, stream : trio.SocketStream, client_process : ClientProcess, addr ):
+    async def server_process(self, stream : trio.SocketStream, client_process : ClientProcess, addr, nusery):
         msg = await self.receive_msg(stream, addr)
         msg = json.loads(msg)
-        await client_process.process_msg(msg, stream, addr)
+        await client_process.process_msg(msg, stream, addr, nusery)
 
     def input_process(self):
         while not self.process.cancelled:
