@@ -30,7 +30,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 ''' + rtext_cmd(f'{prefix} help §ashow help message§r', 'click me to show help message', f'{prefix} help') + '''
 ''' + rtext_cmd(f'{prefix} start §astart ChatBridgeReforged client§r', 'Click me to start', f'{prefix} start') + '''
 ''' + rtext_cmd(f'{prefix} stop §astop ChatBridgeReforged client§r', 'Click me to stop', f'{prefix} stop') + '''
-''' + rtext_cmd(f'{prefix} stauts §ashow status ChatBridgeReforged client§r', 'Click me to show status', f'{prefix} status') + '''
+''' + rtext_cmd(f'{prefix} status §ashow status ChatBridgeReforged client§r', 'Click me to show status', f'{prefix} status') + '''
 ''' + rtext_cmd(f'{prefix} reload §areload ChatBridgeReforged client§r', 'Click me to reload', f'{prefix} reload') + '''
 ''' + rtext_cmd(f'{prefix} restart §arestart ChatBridgeReforged client§r', 'Click me to restart', f'{prefix} restart') +  '''
 ''' + rtext_cmd(f'{prefix} ping §aping ChatBridgeReforged server§r', 'Click me to ping server', f'{prefix} ping') +  '''
