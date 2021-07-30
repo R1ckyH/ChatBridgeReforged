@@ -8,7 +8,7 @@
 - Better logging(maybe)
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
-  - plugin system will luanch soon
+  - plugin system will launch soon
 - support to [Chatbridge](https://github.com/TISUnion/ChatBridge) clients so far
 - [Ricky](https://github.com/rickyhoho) is a suck author
 ## Config
