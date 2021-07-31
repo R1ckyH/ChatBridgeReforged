@@ -115,7 +115,7 @@ class ServerProcess(Process):
                 "responded": False
             }
         }
-        await self.server.send_msg(self.server.clients[target]['stream'], json.dumps(msg))
+        await self.server.send_msg(self.server.clients[target]['stream'], json.dumps(msg), target)
 
     async def msg_process(self, msg : str):
         args = msg.split(' ')
@@ -174,7 +174,7 @@ class ClientProcess(Process):
         self.ping_end = 0
         self.cancelled = False
 
-    async def add_new_client(self, stream : trio.SocketStream, name, version, client_type):
+    async def add_new_client(self, stream : trio.SocketStream, name, libversion, client_type):
         reconnect = False
         if self.server.clients[name]['online']:
             self.logger.debug(f'{name} already exist, stop old connection now')
@@ -183,31 +183,31 @@ class ClientProcess(Process):
         self.server.clients[name]['stream'] = stream
         self.server.clients[name]['online'] = True
         self.server.clients[name]['type'] = client_type
-        if version != None:
-            version = f' with version: {version}'
+        if libversion != None:
+            libversion = f' with version: {libversion}'
         else:
-            version = ''
+            libversion = ''
         if reconnect:
-            self.logger.info(f"Reconnect to {name}{version}")
+            self.logger.info(f"Reconnect to {name}{libversion}")
         else:
-            self.logger.info(f'{self.current_client} connected to the server{version}')
+            self.logger.info(f'{self.current_client} connected to the server{libversion}')
 
     def client_type_check(self, msg):
         if not 'type' in msg.keys():
-            version = "None"
+            client_type = "None"
         else:
-            version = msg['type']
-        return version
+            client_type = msg['type']
+        return client_type
 
     def version_check(self, msg):
-        if not 'version' in msg.keys():
-            version = None
-            self.logger.warning(f"version of client {msg['name']}: {str(version)} is not same with server : {self.server.version}")
+        if not 'libversion' in msg.keys():
+            libversion = None
+            self.logger.warning(f"lib version of client {msg['name']}: {str(libversion)} is not same with server : {self.server.libversion}")
         else:
-            version = msg['version']
-            if version != self.server.version:
-                self.logger.warning(f"version of client {msg['name']}: {str(version)} is not same with server : {self.server.version}")
-        return version
+            libversion = msg['libversion']
+            if libversion != self.server.libversion:
+                self.logger.warning(f"lib version of client {msg['name']}: {str(libversion)} is not same with server : {self.server.libversion}")
+        return libversion
 
     def login(self, name, password, clients):
         for i in range(len(clients)):
@@ -221,14 +221,25 @@ class ClientProcess(Process):
         self.logger.error(f'Client {name} not found in config.yml')
         return False
 
+    async def message_proces(self, msg, nusery):
+        message = self.message_formater(msg['client'], msg['player'], msg['message'])
+        try:
+            send = await self.server.plugin.plugin_on_msg(msg['client'], msg['player'], msg['message'])
+        except:
+            self.logger.bug(exit_now = False, error = True)
+            send = True
+        self.logger.info(message)
+        if send == True:
+            await self.msg_mc_server(msg, self.current_client)
+
     async def process_msg(self, msg, stream : trio.SocketStream, addr, nusery):
         if 'action' in msg.keys():
             if msg['action'] == 'login':
-                version = self.version_check(msg)
+                libversion = self.version_check(msg)
                 client_type = self.client_type_check(msg)
                 if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
                     self.current_client = msg['name']
-                    await self.add_new_client(stream, msg['name'], version, client_type)
+                    await self.add_new_client(stream, msg['name'], libversion, client_type)
                     await self.server.send_msg(stream, '{"action": "result","result": "login success"}', self.current_client)
                     self.server.register_process(self, self.current_client)
                 else:
@@ -242,13 +253,7 @@ class ClientProcess(Process):
                     self.ping_end = time.time()
                     self.server.clients[self.current_client]['pinglock'].cancel()
             elif msg['action'] == 'message':
-                message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                try:
-                    nusery.start_soon(self.server.plugin.plugin_on_msg, msg['client'], msg['player'], msg['message'])
-                except:
-                    self.logger.bug(exit_now = False, error = True)
-                self.logger.info(message)
-                await self.msg_mc_server(msg, self.current_client)
+                nusery.start_soon(self.message_proces, msg, nusery)
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
@@ -265,10 +270,10 @@ class ClientProcess(Process):
                             self.server.clients[self.current_client]['cmdresult'] = msg['result']['result']
                             self.logger.debug(f"Result of Command to {receiver} finished, result: {msg['result']['result']}")
                         elif msg['result']['type'] == 1:
-                            self.server.clients[self.current_client]['cmdresult'] = None
+                            self.server.clients[self.current_client]['cmdresult'] = False
                             self.logger.error(f"Command to {receiver} failed")
                         elif msg['result']['type'] == 2:
-                            self.server.clients[self.current_client]['cmdresult'] = None
+                            self.server.clients[self.current_client]['cmdresult'] = False
                             self.logger.error(f"Client {receiver} does not connected to rcon")
                         self.logger.debug(str(trio.current_time()) + self.current_client)
                         self.server.clients[self.current_client]['cmdlock'].cancel()
@@ -288,7 +293,6 @@ class ClientProcess(Process):
             self.cancelled = True
 
 
-LibVersion = 'v20210725'
 '''
 plugin:##CBR
 数据包格式：
@@ -304,7 +308,7 @@ json格式：
 	"action": "login",
 	"name": "ClientName",
 	"password": "ClientPassword"
-    "version" : "version"
+    "libversion" : "version"
     "type" : "client_type"
 }
 返回登录情况：server -> client 返回结果

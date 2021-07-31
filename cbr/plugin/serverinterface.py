@@ -62,8 +62,12 @@ class ServerInterface:
     def send_servers_command(self, targets, cmd) -> dict:
         '''
             targets is list of server to send
-            targets cant be string
+
+            targets can't be string
+
             return None in dict if timeout
+            
+            return False in dict if rcon error exist
         '''
         return trio.from_thread.run(self.__wait_servers_cmd_result, targets, cmd)
 

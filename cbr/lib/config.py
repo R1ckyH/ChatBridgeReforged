@@ -8,7 +8,8 @@ from ruamel import yaml
 #from ruamel.yaml.comments import CommentedMap
 from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-008'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-009'
+LIB_VERSION = 'v20210731'
 DEFAULT_CONFIG_PATH = "cbr/resources/defaultconfig.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
@@ -39,6 +40,7 @@ class Config:
             with open(CONFIG_PATH, 'r') as cf:
                 self.data = yaml.safe_load(cf)
             self.data.update({'version' : CHATBRIDGEREFORGED_VERSION})
+            self.data.update({'libversion' : LIB_VERSION})
             return True
         else:
             return False
@@ -51,7 +53,8 @@ class Config_check:
         self.check_all()
     
     def check_all(self):
-        self.logger.info(f"CBR is now starting with version {CHATBRIDGEREFORGED_VERSION}")
+        self.logger.info(f"CBR is now starting")
+        self.logger.info(f'version : {CHATBRIDGEREFORGED_VERSION}, lib version : {LIB_VERSION}')
         self.logger.debug("Checking config ......")
         if not path.exists(CONFIG_PATH):
             self.logger.error("Config is missing, defalut config generated")

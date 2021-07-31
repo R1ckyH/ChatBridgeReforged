@@ -10,9 +10,11 @@ import traceback
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
+
 from mcdreforged.api.all import *
 
 debug_mode = False
+is_mcdr = False
 ping_time = 60
 timeout = 120
 config_file = 'config/ChatBridgeReforged_client.json'
@@ -22,6 +24,7 @@ prefix = '!!CBR'
 prefix2 = '!!cbr'
 client_color = '6'#minecraft color code
 CLIENT_TYPE = "mc"
+LIB_VERSION = "v20210731"
 
 
 def rtext_cmd(txt, msg, cmd):
@@ -39,7 +42,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Beta-008',
+    'version': '0.0.1-Beta-009',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -71,7 +74,8 @@ def out_log(msg : str, error = False, debug = False):
         msg = heading + '[DEBUG]: ' + msg
     else:
         msg = heading + '[INFO]: ' + msg
-    print(msg + '\n', end = '')
+    if not is_mcdr:
+        print(msg + '\n', end = '')
     with open(log_file, 'a+') as log:
         log.write(msg + '\n')
 
@@ -276,8 +280,10 @@ class ClientProcess:
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
-                message = self.message_formater(msg['client'], msg['player'], msg['message'])
-                print_msg(message, num = 0, server = self.client.server)
+                messages = msg['message'].splitlines()
+                for i in messages:
+                    message = self.message_formater(msg['client'], msg['player'], i)
+                    print_msg(message, num = 0, server = self.client.server)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 out_log(f'Connection closed from server')
@@ -325,6 +331,7 @@ class CBRTCPClient(network):
         self.cancelled = False
         print_msg(f"Connecting to server with client {self.name}", 2, info, server = self.server)
         out_log(f'Open connection to {self.ip}:{self.port}')
+        out_log(f'version : {PLUGIN_METADATA["version"]}, lib version : {LIB_VERSION}')
         self.socket = socket.socket()
         try:
             self.socket.connect((self.ip, self.port))
@@ -374,7 +381,7 @@ class CBRTCPClient(network):
                 self.send_msg(self.socket, ping)
 
     def login(self, name, password):
-        msg = {"action": "login", "name": name, "password": password, "version" : PLUGIN_METADATA["version"], "type" : CLIENT_TYPE}
+        msg = {"action": "login", "name": name, "password": password, "libversion" : LIB_VERSION, "type" : CLIENT_TYPE}
         self.send_msg(self.socket, json.dumps(msg))
 
     def client_process(self):
@@ -504,7 +511,8 @@ def on_unload(server):
     client.close_connection()
 
 def on_load(server, old):
-    global client
+    global client, is_mcdr
+    is_mcdr = True
     if old != None:
         try:
             old.client.trystop()

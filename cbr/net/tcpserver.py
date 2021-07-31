@@ -2,7 +2,6 @@ import json
 import os
 import struct
 import trio
-import sys
 
 from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
@@ -11,14 +10,15 @@ from cbr.plugin.plugins import plugins
 
 
 class network(AESCryptor):
-    def __init__(self, logger : CBRLogger, key):
+    def __init__(self, logger : CBRLogger, key, clients):
         super().__init__(key, logger)
         self.logger = logger
+        self.clients = clients
 
     async def receive_msg(self, stream : trio.SocketStream, addr):
         data = await stream.receive_some(4)
         if len(data) < 4:
-            return '{}'
+            return None
         length = struct.unpack('I', data)[0]
         msg = await stream.receive_some(length)
         msg = str(msg, encoding='utf-8')
@@ -31,26 +31,28 @@ class network(AESCryptor):
         return msg
 
     async def send_msg(self, stream : trio.SocketStream, msg ,target = ''):
-        if target != '':
+        if target == '':
+            lock = trio.Lock()
+        else:
+            lock = self.clients[target]['sendlock']
             target = 'to ' + target
         self.logger.debug(f"Send: {msg!r} {target}")
         msg = self.encrypt(msg)
-        if sys.version_info.major == 3:
-            msg = bytes(msg, encoding='utf-8')
+        msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
-        async with trio.Lock():
+        async with lock:
             await stream.send_all(msg)
 
 
 class CBRTCPServer(network):
     def __init__(self, logger : CBRLogger, config_data):
-        super().__init__(logger, config_data['server_setting']['aes_key'])
         self.logger = logger
         self.config_data = config_data
-        self.version = config_data['version']
+        self.libversion = config_data['libversion']
         self.ip = config_data['server_setting']['ip_address']
         self.port = config_data['server_setting']['port']
         self.clients = self.setup()
+        super().__init__(logger, config_data['server_setting']['aes_key'], self.clients)
         self.plugin = plugins(self)
 
     def start(self):
@@ -82,6 +84,7 @@ class CBRTCPServer(network):
                     'online' : False,
                     'type' : False,
                     'stream' : None,
+                    'sendlock' : trio.Lock(),
                     'ping' : None,
                     'pinglock' : None,
                     'cmdlock' : None,
@@ -126,14 +129,16 @@ class CBRTCPServer(network):
                     else:
                         self.logger.debug("Cancel Process")
                     break
-                except trio.BrokenResourceError and trio.ClosedResourceError:
+                except trio.BrokenResourceError:
                     self.logger.debug("Process broken")
                     break
+                except trio.ClosedResourceError:
+                    self.logger.debug("Process Closed")
                 except trio.Cancelled:
                     self.logger.debug(f"Cancel Process to {client_process.current_client}")
                     break
                 except:
-                    self.logger.bug(exit_now = False)
+                    self.logger.bug(exit_now = False, error= True)
                     break
             client_process.cancelled = True
             if client_process.current_client != '':
@@ -154,7 +159,7 @@ class CBRTCPServer(network):
             try:
                 trio.from_thread.run(self.process.msg_process, msg)
             except:
-                self.logger.bug(exit_now = False)
+                self.logger.bug(exit_now = False, error = True)
 
 if __name__ == '__main__':
     ip = '192.168.1.19'

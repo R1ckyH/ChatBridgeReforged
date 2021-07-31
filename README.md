@@ -1,16 +1,19 @@
 # Chatbridgerforged
-- Alpha version, please bear the risk if you use it
-- v0.0.1-Alpha
+- Beta version, please bear the risk if you use it
+- v0.0.1-Beta
 - only tested for python 3.7 and 3.8
-- python version should be 3.5+
+- python version should be 3.6+
 - `pip install trio` to install [trio](https://trio.readthedocs.io/)
 ## Compare to [ChatBridge](https://github.com/TISUnion/ChatBridge)
 - Better logging(maybe)
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
-  - plugin system will luanch soon
+  - plugin system will launch soon
 - support to [Chatbridge](https://github.com/TISUnion/ChatBridge) clients so far
+- some of the function in ChatBridge will not be supported
 - [Ricky](https://github.com/rickyhoho) is a suck author
+  - But he will try his best to maintain this repository
+  - Please cheer him so that he will be happy to maintain this repository
 ## Config
 `edit config.yml for config`
 |config|data type| descritpion |
