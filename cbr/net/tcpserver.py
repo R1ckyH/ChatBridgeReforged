@@ -6,7 +6,8 @@ import trio
 from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
 from cbr.net.process import ServerProcess, ClientProcess
-from cbr.plugin.plugins import plugins
+from cbr.plugin.plugin import PluginManager
+from cbr.plugin.serverinterface import ServerInterface
 
 
 class network(AESCryptor):
@@ -53,7 +54,8 @@ class CBRTCPServer(network):
         self.port = config_data['server_setting']['port']
         self.clients = self.setup()
         super().__init__(logger, config_data['server_setting']['aes_key'], self.clients)
-        self.plugin = plugins(self)
+        self.serverinterface = ServerInterface(self)
+        self.plugin_manager = PluginManager(self.serverinterface, self.logger)
 
     def start(self):
         trio.run(self.run)
@@ -108,6 +110,7 @@ class CBRTCPServer(network):
                 self.nusery.start_soon(self.start_server)
                 self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
                 self.nusery.start_soon(trio.to_thread.run_sync, self.input_process)
+                self.nusery.start_soon(self.plugin_manager.reload_all_plugins)
         except KeyboardInterrupt:
             await self.stop()
 
@@ -157,7 +160,7 @@ class CBRTCPServer(network):
             except EOFError:
                 return
             try:
-                trio.from_thread.run(self.process.msg_process, msg)
+                trio.from_thread.run(self.process.msg_process, msg, self.nusery)
             except:
                 self.logger.bug(exit_now = False, error = True)
 

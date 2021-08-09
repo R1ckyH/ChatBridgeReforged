@@ -42,7 +42,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Beta-009',
+    'version': '0.0.1-Beta-010',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -280,8 +280,7 @@ class ClientProcess:
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
-                messages = msg['message'].splitlines()
-                for i in messages:
+                for i in msg['message'].splitlines():
                     message = self.message_formater(msg['client'], msg['player'], i)
                     print_msg(message, num = 0, server = self.client.server)
             elif msg['action'] == 'stop':

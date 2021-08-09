@@ -4,6 +4,18 @@
 from cbr.plugin.info import MessageInfo
 from cbr.plugin.serverinterface import ServerInterface
 
+PLUGIN_METADATA = {
+    'id': 'not_sample_plugin',
+    'version': '0.0.1',
+    'name': 'not_sample_plugin_xd',
+    'description': '##list.',
+    'author': 'Ricky',
+    'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
+    'dependencies': {
+        'chatbridgereforged': '>=0.0.1'
+    }
+}##just do it like mcdr
+
 def players_no_bot(player_list):
     player_string = ''
     for i in range(len(player_list)):
@@ -26,8 +38,6 @@ def on_message(server : ServerInterface, info : MessageInfo):
             if results[i] != None:
                 if results[i].startswith("Unknown command"):
                     players.update({i : "Command Error"})
-                elif results[i] == False:
-                    players.update({i : "RCON Error"})
                 else:
                     playerstring = players_no_bot(results[i].split('online: ')[1].split(', '))
                     players.update({i : playerstring})

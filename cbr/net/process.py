@@ -3,8 +3,13 @@ import time
 import trio
 import threading
 
+from typing import TYPE_CHECKING
+
 from cbr.lib.logger import CBRLogger
-#from cbr.net.tcpserver import CBRTCPServer
+from cbr.plugin.info import MessageInfo
+
+if TYPE_CHECKING:
+    from cbr.net.tcpserver import CBRTCPServer
 
 help_msg = '''====================CBR====================
 help/? for help msg
@@ -17,11 +22,11 @@ say msg send msg to clients
 cmd (client name) send cmd to client
 '''
 
-
 class Process:
-    def __init__(self, tcp_server, logger : CBRLogger):
+    def __init__(self, tcp_server : 'CBRTCPServer', logger : CBRLogger):
         self.server = tcp_server
         self.logger = logger
+        self.plugin_manager = self.server.plugin_manager
 
     def message_formater(self, client, player, msg):
         if player != "":
@@ -31,13 +36,14 @@ class Process:
         return message
 
     async def close_connection(self, stream : trio.SocketStream, target):
-        self.server.clients[target]['online'] = False
-        await self.server.send_msg(stream, json.dumps({'action' : 'stop'}), target)
+        if target != '':
+            self.server.clients[target]['online'] = False
+            await self.server.send_msg(stream, json.dumps({'action' : 'stop'}), target)
+            process = self.server.clients[target]['process']
+            process.cancelled = True
+            if process.cancel_scope != None:
+                process.cancel_scope.cancel()
         await stream.aclose()
-        process = self.server.clients[target]['process']
-        process.cancelled = True
-        if process.cancel_scope != None:
-            process.cancel_scope.cancel()
 
     async def msg_mc_server(self, msg, client_except = ''):
         for i in self.server.clients.keys():
@@ -69,7 +75,25 @@ class Process:
             self.logger.info(f'- {target}: No response - time = 2000ms')
         else:
             self.logger.info(f'- {target}: Alive - time = {ping}ms')
-
+    
+    async def message_process(self, client, player, msg, current_client):
+        message = self.message_formater(client, player, msg)
+        info = MessageInfo(client, msg, player, self.logger)
+        try:
+            await self.plugin_manager.run_event('on_message', info)
+        except:
+            self.logger.bug(exit_now = False, error = True)
+        self.logger.info(message)
+        if info._send_to_servers == True:
+            await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
+    
+    def msg_formatter(self, client, player, msg):
+        message = {"action": "message",
+            "client": client,
+            "player": player,
+            "message": msg
+        }
+        return message
 
 class ServerProcess(Process):
     def __init__(self, tcp_server, logger : CBRLogger):
@@ -77,14 +101,6 @@ class ServerProcess(Process):
         self.server = tcp_server
         self.logger = logger
         self.cancelled = False
-
-    def server_msg(self, msg):
-        message = {"action": "message",
-            "client": "CBR",
-            "player": "",
-            "message": f"{msg}"
-        }
-        return message
 
     def online_list(self):
         cnt = len(self.server.clients)
@@ -117,7 +133,7 @@ class ServerProcess(Process):
         }
         await self.server.send_msg(self.server.clients[target]['stream'], json.dumps(msg), target)
 
-    async def msg_process(self, msg : str):
+    async def msg_process(self, msg : str, nursery: trio.Nursery):
         args = msg.split(' ')
         length = len(args)
         if msg == 'help' or msg == '?':
@@ -134,8 +150,7 @@ class ServerProcess(Process):
                     self.logger.error("Client not found")
         elif msg.startswith('say'):
             msg = msg.replace('say ', '')
-            self.logger.info(self.message_formater("CBR", '', msg))
-            await self.msg_mc_server(self.server_msg(msg))
+            nursery.start_soon(self.message_process, "CBR", '', msg, "CBR")
         elif msg.startswith('ping'):
             if msg == 'ping':
                 await self.ping_all()
@@ -149,6 +164,8 @@ class ServerProcess(Process):
         elif msg == 'test':
             for thread in threading.enumerate(): 
                 print(thread.name)
+        elif msg == 'reloadall':
+            await self.plugin_manager.reload_all_plugins()
         elif msg.startswith('cmd'):
             if length > 1 and args[1] in self.server.clients.keys():
                 target = args[1]
@@ -184,7 +201,7 @@ class ClientProcess(Process):
         self.server.clients[name]['online'] = True
         self.server.clients[name]['type'] = client_type
         if libversion != None:
-            libversion = f' with version: {libversion}'
+            libversion = f' with lib version: {libversion}'
         else:
             libversion = ''
         if reconnect:
@@ -215,24 +232,13 @@ class ClientProcess(Process):
                 if clients[i]['password'] == password:
                     return True
                 else:
-                    self.logger.error(f"Wrong password from client{name}'s login")
+                    self.logger.error(f"Wrong password from client {name}'s login")
                     self.logger.debug(f"Client password is {password}, not same with {clients[i]['password']} in config.yml")
                     return False
         self.logger.error(f'Client {name} not found in config.yml')
         return False
 
-    async def message_proces(self, msg, nusery):
-        message = self.message_formater(msg['client'], msg['player'], msg['message'])
-        try:
-            send = await self.server.plugin.plugin_on_msg(msg['client'], msg['player'], msg['message'])
-        except:
-            self.logger.bug(exit_now = False, error = True)
-            send = True
-        self.logger.info(message)
-        if send == True:
-            await self.msg_mc_server(msg, self.current_client)
-
-    async def process_msg(self, msg, stream : trio.SocketStream, addr, nusery):
+    async def process_msg(self, msg, stream : trio.SocketStream, addr, nursery : trio.Nursery):
         if 'action' in msg.keys():
             if msg['action'] == 'login':
                 libversion = self.version_check(msg)
@@ -244,7 +250,7 @@ class ClientProcess(Process):
                     self.server.register_process(self, self.current_client)
                 else:
                     await self.server.send_msg(stream, '{"action": "result","result": "login fail"}')
-                    stream.aclose()
+                    await stream.aclose()
                     self.logger.debug(f'connection from {addr} closed now')
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
@@ -253,7 +259,7 @@ class ClientProcess(Process):
                     self.ping_end = time.time()
                     self.server.clients[self.current_client]['pinglock'].cancel()
             elif msg['action'] == 'message':
-                nusery.start_soon(self.message_proces, msg, nusery)
+                nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'], self.current_client)
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
@@ -270,12 +276,11 @@ class ClientProcess(Process):
                             self.server.clients[self.current_client]['cmdresult'] = msg['result']['result']
                             self.logger.debug(f"Result of Command to {receiver} finished, result: {msg['result']['result']}")
                         elif msg['result']['type'] == 1:
-                            self.server.clients[self.current_client]['cmdresult'] = False
-                            self.logger.error(f"Command to {receiver} failed")
+                            self.server.clients[self.current_client]['cmdresult'] = None
+                            self.logger.warning(f"Command to {receiver} failed")
                         elif msg['result']['type'] == 2:
-                            self.server.clients[self.current_client]['cmdresult'] = False
-                            self.logger.error(f"Client {receiver} does not connected to rcon")
-                        self.logger.debug(str(trio.current_time()) + self.current_client)
+                            self.server.clients[self.current_client]['cmdresult'] = None
+                            self.logger.warning(f"Client {receiver} does not connected to rcon")
                         self.server.clients[self.current_client]['cmdlock'].cancel()
                     elif self.server.clients[sender]['online']:
                         await self.server.send_msg(self.server.clients[sender]['stream'], json.dumps(msg), sender)
@@ -291,96 +296,3 @@ class ClientProcess(Process):
         elif self.current_client == '':
             self.logger.warning(f"Unknown connection from {stream.socket.getpeername()}")
             self.cancelled = True
-
-
-'''
-plugin:##CBR
-数据包格式：
-4 byte长的unsigned int代表长度，随后是所指长度的加密字符串，解密后为一个json
-json格式：
-返回结果： server -> client
-{
-	"action": "result",
-	"result": "RESULT"
-}
-开始连接： client -> server
-{
-	"action": "login",
-	"name": "ClientName",
-	"password": "ClientPassword"
-    "libversion" : "version"
-    "type" : "client_type"
-}
-返回登录情况：server -> client 返回结果
-	"result": login success" // 成功
-	"result": login fail" // 失败
-
-传输信息： client <-> server
-{
-	"action": "message",
-	"client": "CLIENT_NAME",
-	"player": "PLAYER_NAME",
-	"message": "MESSAGE_STRING"
-}
-
-结束连接： client <-> server
-{
-	"action": "stop"
-}
-
-保持链接
-sender -> receiver
-{
-	"action": "keepAlive",
-	"type": "ping"
-}
-receiver -> sender
-{
-	"action": "keepAlive",
-	"type": "pong"
-}
-等待KeepAliveTimeWait秒无响应即可中断连接
-
-调用指令：
-clientA -> server -> clientB
-{
-	"action": "command",
-	"sender": "CLIENT_A_NAME",
-	"receiver": "CLIENT_B_NAME",
-	"command": "COMMAND",
-	"result":
-	{
-		"responded": false
-	}
-}
-clientA <- server <- clientB
-{
-	"action": "command",
-	"sender": "CLIENT_A_NAME",
-	"receiver": "CLIENT_B_NAME",
-	"command": "COMMAND",
-	"result": 
-	{
-		"responded": true,
-		...
-	}
-}
-    [glist] //example
-    "command": "glist"
-	"result":
-	{
-		"responded": xxx,
-		"type": int,  // 0: good, 1: rcon query fail, 2: rcon not found
-		"result": "STRING" // if good
-	}
-
-may be todo:
-	[!!stats]
-	"result":
-	{
-		"responded": xxx,
-		"type": int,  // 0: good, 1: stats not found, 2: stats helper not found
-		"stats_name": "aaa.bbb", // if good
-		"result": "STRING" // if good
-	}
-'''

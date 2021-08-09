@@ -3,14 +3,17 @@ CBR ServerInterface
 '''
 import json
 import trio
-import logging
 
-#from cbr.net.tcpserver import CBRTCPServer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cbr.lib.logger import CBRLogger
+    from cbr.net.tcpserver import CBRTCPServer
 
 class ServerInterface:
-    def __init__(self, server):
+    def __init__(self, server : 'CBRTCPServer'):
         self._server = server
-        self.logger : logging.Logger = server.logger
+        self.logger : 'CBRLogger' = server.logger
         self.__result_cache = None
 
     def is_client_online(self, client):
@@ -27,7 +30,7 @@ class ServerInterface:
 
     def get_online_clients(self):
         """
-            get online list of clients
+            get list of online clients
         """
         clients = []
         for i in self._server.clients.keys():
@@ -35,22 +38,35 @@ class ServerInterface:
                 clients.append(i)
         return clients
     
+    def get_mc_clients(self):
+        """
+            get list of minecraft clients
+        """
+        clients = []
+        for i in self._server.clients.keys():
+            if self.is_mc_client(i):
+                clients.append(i)
+        return clients
+    
     def get_online_mc_clients(self):
         """
-            get online list of minecraft clients
+            get list of online minecraft clients
         """
         clients = []
         for i in self._server.clients.keys():
             if self.is_client_online(i) and self.is_mc_client(i):
                 clients.append(i)
         return clients
-    
+
     def send_msg(self, target, msg):
         """
             send message to target client
         """
-        message = json.dumps(self._server.process.server_msg(msg))
-        self.logger.debug(message)
+        if target == "CBR":
+            for i in msg.splitlines():
+                trio.from_thread.run_sync(self.logger.info, i)
+            return
+        message = json.dumps(self._server.process.msg_formatter("CBR", "", msg))
         trio.from_thread.run(self._server.send_msg, self._server.clients[target]['stream'], message)
 
     def send_command(self, target, cmd) -> str:
@@ -65,17 +81,15 @@ class ServerInterface:
 
             targets can't be string
 
-            return None in dict if timeout
-            
-            return False in dict if rcon error exist
+            return None in dict if cant get result
         '''
         return trio.from_thread.run(self.__wait_servers_cmd_result, targets, cmd)
 
     async def __wait_servers_cmd_result(self, targets, cmd):
         self.__result_cache = {}
         async with trio.open_nursery() as nursery:
-            for i in range(len(targets)):
-                nursery.start_soon(self.__cache_cmds_result, targets[i], cmd)
+            for i in targets:
+                nursery.start_soon(self.__cache_cmds_result, i, cmd)
         results = self.__result_cache
         self.__result_cache = None
         return results
@@ -88,5 +102,4 @@ class ServerInterface:
             self._server.clients[target]['cmdresult'] = None
             await self._server.process.send_cmd(cmd, target)
             await trio.sleep(2)
-        self.logger.debug(str(trio.current_time()) + "finish " + target)
         return self._server.clients[target]['cmdresult']

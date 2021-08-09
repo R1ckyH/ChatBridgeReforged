@@ -78,13 +78,9 @@ class CBRLogger(logging.getLoggerClass()):
         self.addHandler(self.file_handler)'''
 
     def forcedebug(self):
-        if not self.debug_all:
-            self.debug_all = True
-            self.info(f'- Forcedebug mode on')
-            self.debug('test')
-        elif self.debug_all:
-            self.debug_all = False
-            self.info('- Debug mode turn off')
+        self.debug_all = not self.debug_all
+        self.info(f'- Forcedebug mode: {self.debug_all}')
+        self.debug('test')
 
 
 if __name__ == '__main__':
