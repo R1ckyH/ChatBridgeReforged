@@ -1,6 +1,6 @@
-'''
+"""
 plugin run here
-'''
+"""
 
 import importlib
 import os
@@ -10,23 +10,24 @@ from cbr.lib.logger import CBRLogger
 from cbr.plugin.plugin_event import PluginEventManager
 from cbr.plugin.serverinterface import ServerInterface
 
+
 class Plugin:
     def __init__(self, path):
         self.path_name = path
+        self.last_edit_time = os.path.getmtime(f'./plugins/{self.path_name}.py')
         self.instance = importlib.import_module('plugins.' + path)
         self.setup()
 
     def setup(self):
-        self.last_edit_time = os.path.getmtime(f'./plugins/{self.path_name}.py')
         self.__init_metadata()
 
     def reload(self):
         self.instance = importlib.reload(self.instance)
         self.setup()
 
-    def __get_default_metadata(self, data = None):
+    def __get_default_metadata(self, data=None):
         metadata = {
-            'id' : self.path_name,
+            'id': self.path_name,
             'version': '0.0.0',
             'name': self.path_name,
             'description': "A CBR plugin",
@@ -34,20 +35,20 @@ class Plugin:
             'link': None,
             'dependencies': None
         }
-        if data != None:
+        if data is not None:
             return metadata[data]
         return metadata
 
     def gen_metadata(self):
         try:
             self.metadata = self.instance.PLUGIN_METADATA
-        except:
+        except AttributeError:
             self.metadata = self.__get_default_metadata()
 
     def get_data(self, data):
         try:
             data = self.metadata[data]
-        except:
+        except KeyError:
             data = self.__get_default_metadata(data)
         return str(data)
 
@@ -61,9 +62,10 @@ class Plugin:
         self.link = self.get_data('link')
         self.dependencies = self.get_data('dependencies')
 
+
 class PluginManager:
-    def __init__(self, serverinterface : ServerInterface, logger : CBRLogger):
-        self.serverinterface = serverinterface
+    def __init__(self, server_interface: ServerInterface, logger: CBRLogger):
+        self.server_interface = server_interface
         self.logger = logger
         self.event_manager = PluginEventManager(self.logger)
         self.plugins = {}
@@ -92,7 +94,7 @@ class PluginManager:
     async def load_plugin(self, plugin_file_name):
         if plugin_file_name in self.dir_plugin:
             last_edit_time = os.path.getmtime(f'./plugins/{plugin_file_name}')
-            plugin : Plugin = self.plugins[self.dir_plugin[plugin_file_name]]
+            plugin: Plugin = self.plugins[self.dir_plugin[plugin_file_name]]
             if plugin.last_edit_time != last_edit_time:
                 self.logger.info(f"Reload plugin {plugin_file_name}")
                 plugin.reload()
@@ -101,16 +103,17 @@ class PluginManager:
         else:
             self.logger.info(f"Load plugin {plugin_file_name}")
             plugin_instance = Plugin(plugin_file_name[:-3])
-            self.dir_plugin.update( { plugin_file_name : plugin_instance.id } )
+            self.dir_plugin.update({plugin_file_name: plugin_instance.id})
             self.plugins[plugin_instance.id] = plugin_instance
 
     async def run_event(self, event, *args):
-        await self.event_manager.run_event(event, self.serverinterface, *args)
+        await self.event_manager.run_event(event, self.server_interface, *args)
+
 
 if __name__ == '__main__':
-    manager = PluginManager()
+    manager = PluginManager(None, None)
     trio.run(manager.reload_all_plugins)
-    #trio.run(manager.run_event, 'on_test', 123)
+    # trio.run(manager.run_event, 'on_test', 123)
     trio.run(manager.run_event, 'on_test2', 123)
     trio.run(manager.run_event, 'on_load', 123)
     input()

@@ -10,13 +10,13 @@ from cbr.plugin.plugin import PluginManager
 from cbr.plugin.serverinterface import ServerInterface
 
 
-class network(AESCryptor):
-    def __init__(self, logger : CBRLogger, key, clients):
+class Network(AESCryptor):
+    def __init__(self, logger: CBRLogger, key, clients):
         super().__init__(key, logger)
         self.logger = logger
         self.clients = clients
 
-    async def receive_msg(self, stream : trio.SocketStream, addr):
+    async def receive_msg(self, stream: trio.SocketStream, address):
         data = await stream.receive_some(4)
         if len(data) < 4:
             return None
@@ -25,13 +25,13 @@ class network(AESCryptor):
         msg = str(msg, encoding='utf-8')
         try:
             msg = self.decrypt(msg)
-        except:
+        except Exception:
             self.logger.bug(exit_now=False)
             return '{}'
-        self.logger.debug(f"Received {msg!r} from {addr!r}")
+        self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg
 
-    async def send_msg(self, stream : trio.SocketStream, msg ,target = ''):
+    async def send_msg(self, stream: trio.SocketStream, msg, target=''):
         if target == '':
             lock = trio.Lock()
         else:
@@ -45,17 +45,19 @@ class network(AESCryptor):
             await stream.send_all(msg)
 
 
-class CBRTCPServer(network):
-    def __init__(self, logger : CBRLogger, config_data):
+class CBRTCPServer(Network):
+    def __init__(self, logger: CBRLogger, config_data):
         self.logger = logger
         self.config_data = config_data
         self.libversion = config_data['libversion']
         self.ip = config_data['server_setting']['ip_address']
         self.port = config_data['server_setting']['port']
-        self.clients = self.setup()
+        self.nursery = None
+        self.clients = self.setup_client()
         super().__init__(logger, config_data['server_setting']['aes_key'], self.clients)
-        self.serverinterface = ServerInterface(self)
-        self.plugin_manager = PluginManager(self.serverinterface, self.logger)
+        self.server_interface = ServerInterface(self)
+        self.plugin_manager = PluginManager(self.server_interface, self.logger)
+        self.process = ServerProcess(self, self.logger)
 
     def start(self):
         trio.run(self.run)
@@ -65,33 +67,33 @@ class CBRTCPServer(network):
 
     async def start_server(self):
         try:
-            await trio.serve_tcp(self.handle_echo, self.port, host= self.ip)
+            await trio.serve_tcp(self.handle_echo, self.port, host=self.ip)
         except OSError:
-            self.logger.bug(exit_now = True, error = True)
-    
+            self.logger.bug(exit_now=True, error=True)
+
     async def stop(self):
         self.logger.debug('Server closing')
         await self.close_all_connection()
         self.logger.info("Server closed")
-        self.nusery.cancel_scope.cancel()
+        self.nursery.cancel_scope.cancel()
         self.process.cancelled = True
 
-    def setup(self):
+    def setup_client(self):
         client_config = self.config_data['clients']
         client_dict = {}
         for i in range(len(client_config)):
             client_dict.update({
-                client_config[i]['name'] : {
-                    'password' : client_config[i]['password'], 
-                    'online' : False,
-                    'type' : False,
-                    'stream' : None,
-                    'sendlock' : trio.Lock(),
-                    'ping' : None,
-                    'pinglock' : None,
-                    'cmdlock' : None,
-                    'cmdresult' : None
-                    }
+                client_config[i]['name']: {
+                    'password': client_config[i]['password'],
+                    'online': False,
+                    'type': False,
+                    'stream': None,
+                    'sendlock': trio.Lock(),
+                    'ping': None,
+                    'pinglock': None,
+                    'cmdlock': trio.CancelScope(),
+                    'cmdresult': None
+                }
             })
         return client_dict
 
@@ -104,28 +106,27 @@ class CBRTCPServer(network):
 
     async def main(self):
         self.logger.info(f'Server starting at pid {os.getpid()}')
-        self.process = ServerProcess(self, self.logger)
         try:
-            async with trio.open_nursery() as self.nusery:
-                self.nusery.start_soon(self.start_server)
+            async with trio.open_nursery() as self.nursery:
+                self.nursery.start_soon(self.start_server)
                 self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
-                self.nusery.start_soon(trio.to_thread.run_sync, self.input_process)
-                self.nusery.start_soon(self.plugin_manager.reload_all_plugins)
+                self.nursery.start_soon(trio.to_thread.run_sync, self.input_process)
+                self.nursery.start_soon(self.plugin_manager.reload_all_plugins)
         except KeyboardInterrupt:
             await self.stop()
 
-    def register_process(self, process : ClientProcess, client_name):
+    def register_process(self, process: ClientProcess, client_name):
         self.clients[client_name]['process'] = process
 
-    async def handle_echo(self, stream :trio.SocketStream):
-        addr = stream.socket.getpeername()
-        self.logger.debug(f"new session started from {addr}")
+    async def handle_echo(self, stream: trio.SocketStream):
+        address = stream.socket.getpeername()
+        self.logger.debug(f"new session started from {address}")
         client_process = ClientProcess(self, self.logger)
         async with trio.open_nursery() as nursery:
-            while client_process.cancelled == False:
+            while not client_process.cancelled:
                 try:
                     with trio.fail_after(120) as client_process.cancel_scope:
-                        await self.server_process(stream, client_process, addr, nursery)
+                        await self.server_process(stream, client_process, address, nursery)
                 except trio.TooSlowError:
                     if not client_process.cancelled:
                         self.logger.error('Connection time out!')
@@ -140,18 +141,18 @@ class CBRTCPServer(network):
                 except trio.Cancelled:
                     self.logger.debug(f"Cancel Process to {client_process.current_client}")
                     break
-                except:
-                    self.logger.bug(exit_now = False, error= True)
+                except Exception:
+                    self.logger.bug(exit_now=False, error=True)
                     break
             client_process.cancelled = True
             if client_process.current_client != '':
                 self.logger.info(f'Closed Process to {client_process.current_client}')
                 self.clients[client_process.current_client]['online'] = False
 
-    async def server_process(self, stream : trio.SocketStream, client_process : ClientProcess, addr, nusery):
-        msg = await self.receive_msg(stream, addr)
+    async def server_process(self, stream: trio.SocketStream, client_process: ClientProcess, address, nursery):
+        msg = await self.receive_msg(stream, address)
         msg = json.loads(msg)
-        await client_process.process_msg(msg, stream, addr, nusery)
+        await client_process.process_msg(msg, stream, address, nursery)
 
     def input_process(self):
         while not self.process.cancelled:
@@ -160,12 +161,6 @@ class CBRTCPServer(network):
             except EOFError:
                 return
             try:
-                trio.from_thread.run(self.process.msg_process, msg, self.nusery)
-            except:
-                self.logger.bug(exit_now = False, error = True)
-
-if __name__ == '__main__':
-    ip = '192.168.1.19'
-    port = '7777'
-    server = CBRTCPServer({'server_setting':{'ip_address' : ip, 'port': port, 'aes_key': 'asdasd'}})
-    server.start()
+                trio.from_thread.run(self.process.msg_process, msg, self.nursery)
+            except Exception:
+                self.logger.bug(exit_now=False, error=True)

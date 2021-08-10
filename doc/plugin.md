@@ -4,15 +4,15 @@ copy and edit form [MCDR](https://github.com/Fallen-Breath/MCDReforged)
 
 Thx [Fallen_Breath](https://github.com/Fallen-Breath)
 
-Like MCDaemon and MCDR, a CBR plugin is a `.py` file locating in the `plugins/` folder. CBR will automatically load every plugin inside this folder
+Like MCDaemon and MCDR's single file plugin, a CBR plugin is a `.py` file locating in the `plugins/` folder. CBR will automatically load every plugin inside this folder
 
-There is a sample plugin named `not_sample_plugin.py` in the `plugins/` folder and you can check its content for reference
+There is a sample plugin named `not_sample_plugin.py` in the `plugins/` folder, and you can check its content for reference
 
 ## Event
 
-When the server has trigger specific event, CBR will call relevant method of each plugin if the plugin has declared the method. CBR will create a separated thread for the called method to run
+When the server has trigger specific event, CBR will call relevant `Function` of each plugin if the plugin has declared the method. CBR will create a separated thread for the called method to run
 
-| Method | When to call | Avaliabe | Reference usage |
+| Function | When to call | Available | Reference usage |
 |---|---|---|---|
 | on_load(server, old_module) | A plugin gets loaded | No | The new plugin inherits information from the old plugin |
 | on_unload(server) | A plugin gets unloaded | No | Clean up or turn off functionality of the old plugin |
@@ -28,13 +28,13 @@ Among them, the information of each parameter object is as follows:
 
 **Read `cbr/plugin/server_interface.py` to help you understand its functionality**
 
-This is a object for the plugin to interact with the server. It belongs to the ServerInterface class in `cbr/plugin/server_interface.py`
+This is an object for the plugin to interact with the server. It belongs to the ServerInterface class in `cbr/plugin/server_interface.py`
 
-It has following constants:
+It has the following constants:
 
-It has following variables:
+It has the following variables:
 
-| Variable | Type | Function |
+| Variable | Type | Usage |
 |---|---|---|
 | logger | (CBRLogger)logging.Logger | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. [docs](https://docs.python.org/3/library/logging.html#logger-objects)
 
@@ -42,14 +42,14 @@ It also has these following methods:
 
 **Server Control**
 
-| Method | Function |
+| Function | Usage |
 |---|---|
 | stop() | Stop CBR server and exit |
 | get_server_pid() | Return the pid of the server process. Notes the process with this pid is a bash process, which is the parent process of real server process you might be interested in |
 
 **Text Interaction**
 
-| Method | Function |
+| Function | Usage |
 |---|---|
 | send_command(target, command) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None`|
 | send_servers_command(targets, command) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None`|
@@ -58,7 +58,7 @@ It also has these following methods:
 
 **Other**
 
-| Method | Function |
+| Function | Usage |
 |---|---|
 | get_permission_level(obj) | todo |
 | set_permission_level(player, level) | todo |
@@ -119,10 +119,10 @@ The attributes of the info object are:
 - For the `info` parameter in `on_message` don't modify it, just only read it
 - Call `server.add_help_message()` in `on_load()` to add some necessary tips for your plugin so the player can use `!!help` command to know about your plugin **TODO**
 - Keep the environment clean. Store your data files in a custom folder in `plugins/`, your config file in `config/` folder and your log file in `log/` folder will be a good choice
-- `on_unload()` allows you to have as many time as you want to save your data, **never stuck it**. Be carefully, don't enter an endless loop, CBR will waiting for you to finish
+- `on_unload()` allows you to have as many times as you want to save your data, **never stuck it**. Be carefully, don't enter an endless loop, CBR will waiting for you to finish
 
-## Something i want to say
-- if you want to contect me, please find me with discord `rickyho#0941` or
+## Something I want to say
+- if you want to contact me, please find me with discord `rickyho#0941` or
 find me in MCDR discuss group
 - Please give me a `star` if you like this project
 - If you have some good idea, please share it to me

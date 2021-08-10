@@ -1,4 +1,4 @@
-# Chatbridgerforged
+# ChatBridgeReforged
 
 - Beta version, please bear the risk if you use it
 - v0.0.1-Beta
@@ -12,8 +12,8 @@
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
   - plugin system will launch soon
-- support to [Chatbridge](https://github.com/TISUnion/ChatBridge) clients so far
-- some of the function in ChatBridge will not be supported
+- support to [ChatBridge](https://github.com/TISUnion/ChatBridge) clients so far
+- Some function in ChatBridge will not be supported
 - [Ricky](https://github.com/rickyhoho) is a suck author
   - But he will try his best to maintain this repository
   - Please cheer him so that he will be happy to maintain this repository
@@ -21,19 +21,20 @@
 ## Config
 
 `edit config.yml for config`
-|config|data type| descritpion |
-|-|-|-|
-|server-setting| `dict` | basic setting of server|
-|ip address|`string`| ip address for hosting|
-|port| `int` | port for hosting|
-|aes_key| `string` | key for `AES` encrytion|
-|clients| `list` | list of clients|
-|name| `string` | name of client|
-|password| `string`| password of client|
-|debug| `dict` | debug mode|
-|all| `bool` | debug mode switch|
-|CBR| `bool` | not available to use now|
-|plugin| `bool` | not available to use now|
+
+| config | data type | description |
+|----|----|----|
+| server-setting | `dict` | basic setting of server |
+| ip address | `string`| ip address for hosting |
+| port | `int` | port for hosting |
+| aes_key | `string` | key for `AES` encryption |
+| clients | `list` | list of clients |
+| name | `string` | name of client |
+| password | `string`| password of client |
+| debug | `dict` | debug mode |
+| all | `bool` | debug mode switch |
+| CBR | `bool` | not available to use now |
+| plugin | `bool` | not available to use now |
 
 ## Plugin
 

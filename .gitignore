@@ -1,15 +1,12 @@
-# ChatBridgeReforged 2021
+# @ChatBridgeReforged 2021
 
-#Files
+# Files
+.gitignore
+*.json
 *.log
 *.pyc
-astdin.py
-clinettest.py
-server.py
-servertest.py
+.idea/
+config.yml
+tempCodeRunnerFile.py
 test.py
 test2.py
-.gitignore
-*config.yml
-tempCodeRunnerFile.py
-*.json

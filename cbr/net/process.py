@@ -22,32 +22,33 @@ say msg send msg to clients
 cmd (client name) send cmd to client
 '''
 
+
 class Process:
-    def __init__(self, tcp_server : 'CBRTCPServer', logger : CBRLogger):
+    def __init__(self, tcp_server: 'CBRTCPServer', logger: CBRLogger):
         self.server = tcp_server
         self.logger = logger
         self.plugin_manager = self.server.plugin_manager
 
-    def message_formater(self, client, player, msg):
+    def message_formatter(self, client, player, msg):
         if player != "":
             message = f"[{client}] <{player}> {msg}"  # chat message
         else:
             message = f"[{client}] {msg}"
         return message
 
-    async def close_connection(self, stream : trio.SocketStream, target):
+    async def close_connection(self, stream: trio.SocketStream, target):
         if target != '':
             self.server.clients[target]['online'] = False
-            await self.server.send_msg(stream, json.dumps({'action' : 'stop'}), target)
+            await self.server.send_msg(stream, json.dumps({'action': 'stop'}), target)
             process = self.server.clients[target]['process']
             process.cancelled = True
-            if process.cancel_scope != None:
+            if process.cancel_scope is not None:
                 process.cancel_scope.cancel()
         await stream.aclose()
 
-    async def msg_mc_server(self, msg, client_except = ''):
+    async def msg_mc_server(self, msg, client_except=''):
         for i in self.server.clients.keys():
-            if client_except != i and self.server.clients[i]['online'] == True:
+            if client_except != i and self.server.clients[i]['online']:
                 stream = self.server.clients[i]['stream']
                 await self.server.send_msg(stream, str(json.dumps(msg)), i)
 
@@ -75,28 +76,29 @@ class Process:
             self.logger.info(f'- {target}: No response - time = 2000ms')
         else:
             self.logger.info(f'- {target}: Alive - time = {ping}ms')
-    
+
     async def message_process(self, client, player, msg, current_client):
-        message = self.message_formater(client, player, msg)
+        message = self.message_formatter(client, player, msg)
         info = MessageInfo(client, msg, player, self.logger)
         try:
             await self.plugin_manager.run_event('on_message', info)
-        except:
-            self.logger.bug(exit_now = False, error = True)
+        except Exception:
+            self.logger.bug(exit_now=False, error=True)
         self.logger.info(message)
-        if info._send_to_servers == True:
+        if info._send_to_servers:
             await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
-    
+
     def msg_formatter(self, client, player, msg):
         message = {"action": "message",
-            "client": client,
-            "player": player,
-            "message": msg
-        }
+                   "client": client,
+                   "player": player,
+                   "message": msg
+                   }
         return message
 
+
 class ServerProcess(Process):
-    def __init__(self, tcp_server, logger : CBRLogger):
+    def __init__(self, tcp_server, logger: CBRLogger):
         super().__init__(tcp_server, logger)
         self.server = tcp_server
         self.logger = logger
@@ -127,13 +129,13 @@ class ServerProcess(Process):
             "receiver": target,
             "command": cmd,
             "result":
-            {
-                "responded": False
-            }
+                {
+                    "responded": False
+                }
         }
         await self.server.send_msg(self.server.clients[target]['stream'], json.dumps(msg), target)
 
-    async def msg_process(self, msg : str, nursery: trio.Nursery):
+    async def msg_process(self, msg: str, nursery: trio.Nursery):
         args = msg.split(' ')
         length = len(args)
         if msg == 'help' or msg == '?':
@@ -162,7 +164,7 @@ class ServerProcess(Process):
                 else:
                     self.logger.error("Client not found")
         elif msg == 'test':
-            for thread in threading.enumerate(): 
+            for thread in threading.enumerate():
                 print(thread.name)
         elif msg == 'reloadall':
             await self.plugin_manager.reload_all_plugins()
@@ -171,7 +173,7 @@ class ServerProcess(Process):
                 target = args[1]
                 if self.server.clients[target]['online']:
                     cmd = msg.replace('cmd ' + args[1] + ' ', '')
-                    await self.send_cmd(cmd, target = args[1])
+                    await self.send_cmd(cmd, target=args[1])
                 else:
                     self.logger.error("Client not online")
             else:
@@ -183,7 +185,7 @@ class ServerProcess(Process):
 
 
 class ClientProcess(Process):
-    def __init__(self, tcp_server, logger : CBRLogger):
+    def __init__(self, tcp_server, logger: CBRLogger):
         super().__init__(tcp_server, logger)
         self.server = tcp_server
         self.logger = logger
@@ -191,7 +193,7 @@ class ClientProcess(Process):
         self.ping_end = 0
         self.cancelled = False
 
-    async def add_new_client(self, stream : trio.SocketStream, name, libversion, client_type):
+    async def add_new_client(self, stream: trio.SocketStream, name, libversion, client_type):
         reconnect = False
         if self.server.clients[name]['online']:
             self.logger.debug(f'{name} already exist, stop old connection now')
@@ -200,7 +202,7 @@ class ClientProcess(Process):
         self.server.clients[name]['stream'] = stream
         self.server.clients[name]['online'] = True
         self.server.clients[name]['type'] = client_type
-        if libversion != None:
+        if libversion is not None:
             libversion = f' with lib version: {libversion}'
         else:
             libversion = ''
@@ -210,14 +212,14 @@ class ClientProcess(Process):
             self.logger.info(f'{self.current_client} connected to the server{libversion}')
 
     def client_type_check(self, msg):
-        if not 'type' in msg.keys():
+        if 'type' not in msg.keys():
             client_type = "None"
         else:
             client_type = msg['type']
         return client_type
 
     def version_check(self, msg):
-        if not 'libversion' in msg.keys():
+        if 'libversion' not in msg.keys():
             libversion = None
             self.logger.warning(f"lib version of client {msg['name']}: {str(libversion)} is not same with server : {self.server.libversion}")
         else:
@@ -233,12 +235,13 @@ class ClientProcess(Process):
                     return True
                 else:
                     self.logger.error(f"Wrong password from client {name}'s login")
-                    self.logger.debug(f"Client password is {password}, not same with {clients[i]['password']} in config.yml")
+                    self.logger.debug(
+                        f"Client password is {password}, not same with {clients[i]['password']} in config.yml")
                     return False
         self.logger.error(f'Client {name} not found in config.yml')
         return False
 
-    async def process_msg(self, msg, stream : trio.SocketStream, addr, nursery : trio.Nursery):
+    async def process_msg(self, msg, stream: trio.SocketStream, address, nursery: trio.Nursery):
         if 'action' in msg.keys():
             if msg['action'] == 'login':
                 libversion = self.version_check(msg)
@@ -246,12 +249,13 @@ class ClientProcess(Process):
                 if self.login(msg['name'], msg['password'], self.server.config_data['clients']):
                     self.current_client = msg['name']
                     await self.add_new_client(stream, msg['name'], libversion, client_type)
-                    await self.server.send_msg(stream, '{"action": "result","result": "login success"}', self.current_client)
+                    await self.server.send_msg(stream, '{"action": "result","result": "login success"}',
+                                               self.current_client)
                     self.server.register_process(self, self.current_client)
                 else:
                     await self.server.send_msg(stream, '{"action": "result","result": "login fail"}')
                     await stream.aclose()
-                    self.logger.debug(f'connection from {addr} closed now')
+                    self.logger.debug(f'connection from {address} closed now')
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
                     await self.server.send_msg(stream, '{"action": "keepAlive", "type": "pong"}', self.current_client)
@@ -259,7 +263,8 @@ class ClientProcess(Process):
                     self.ping_end = time.time()
                     self.server.clients[self.current_client]['pinglock'].cancel()
             elif msg['action'] == 'message':
-                nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'], self.current_client)
+                nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'],
+                                   self.current_client)
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
@@ -270,11 +275,13 @@ class ClientProcess(Process):
                 if msg['result']['responded']:
                     if sender == 'CBR':
                         if 'type' not in msg['result'].keys():
-                            self.logger.warning(f"Unknown result of sending {command} to {receiver} , maybe you should update the version of CBR client")
+                            self.logger.warning(
+                                f"Unknown result of sending {command} to {receiver} , maybe you should update the version of CBR client")
                             self.server.clients[self.current_client]['cmdresult'] = None
                         elif msg['result']['type'] == 0:
                             self.server.clients[self.current_client]['cmdresult'] = msg['result']['result']
-                            self.logger.debug(f"Result of Command to {receiver} finished, result: {msg['result']['result']}")
+                            self.logger.debug(
+                                f"Result of Command to {receiver} finished, result: {msg['result']['result']}")
                         elif msg['result']['type'] == 1:
                             self.server.clients[self.current_client]['cmdresult'] = None
                             self.logger.warning(f"Command to {receiver} failed")
