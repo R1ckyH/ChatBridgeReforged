@@ -79,13 +79,13 @@ class PluginManager:
         return plugins
 
     async def reload_all_plugins(self):
-        self.logger.debug("Start reload plugins")
+        self.logger.debug("Start reload plugins", module='plugin')
         plugins = await self.__get_plugin_list()
         for i in plugins:
             await self.unload_plugin(i)
-            await self.load_plugin(i)
+            await self.load_plugin(i)  # TODO: complete load and unload
         self.event_manager.register_plugins(self.plugins)
-        self.logger.debug("Finish reload plugins")
+        self.logger.debug("Finish reload plugins", module='plugin')
 
     async def unload_plugin(self, plugin_file_name):
         if plugin_file_name in self.dir_plugin:

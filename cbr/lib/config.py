@@ -5,17 +5,20 @@ import shutil
 
 from os import path
 from ruamel import yaml
+from typing import TYPE_CHECKING
 # from ruamel.yaml.comments import CommentedMap
-from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-010'
+if TYPE_CHECKING:
+    from cbr.lib.logger import CBRLogger
+
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-011'
 LIB_VERSION = 'v20210731'
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
     {'name': 'server_setting',
      'sub_structure': [
-         {'name': 'ip_address', },
+         {'name': 'host_name', },
          {'name': 'port', },
          {'name': 'aes_key', },
      ]
@@ -31,74 +34,95 @@ CONFIG_STRUCTURE = [
 ]
 
 
-class Config:
-    def __init__(self):
-        self.data = {}
-
-    def get_data(self):
-        if path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH, 'r') as cf:
-                self.data = yaml.safe_load(cf)
-            self.data.update({'version': CHATBRIDGEREFORGED_VERSION})
-            self.data.update({'libversion': LIB_VERSION})
-            return True
-        else:
-            return False
-
-
-class ConfigCheck:
-    def __init__(self, logger: CBRLogger, config: Config):
+class ConfigChecker:
+    def __init__(self, logger: 'CBRLogger'):
         self.logger = logger
-        self.config = config
-        self.check_all()
 
     def check_all(self):
-        self.logger.info(f"CBR is now starting")
-        self.logger.info(f'version : {CHATBRIDGEREFORGED_VERSION}, lib version : {LIB_VERSION}')
-        self.logger.debug("Checking config ......")
+        self.logger.info("Checking config ......")
         if not path.exists(CONFIG_PATH):
-            self.logger.error("Config is missing, default config generated")
-            self._gen_config()
-        self.config.get_data()
-        self._check_config_info(self.config.data)
+            self.logger.error("Config file is missing, default config generated")
+            self.__gen_config()
+        else:
+            with open(CONFIG_PATH, 'r') as f:
+                data = yaml.safe_load(f)
+            try:
+                self.logger.debug_config = data['debug']
+                self.logger.debug_all = self.logger.debug_config['all']
+            except KeyError:
+                raise ValueError('Some config is missing in config.yml')
+        self.__check_config_info(data)
+        return data
 
-    def _gen_config(self):
+    def __gen_config(self):
         if not path.exists(DEFAULT_CONFIG_PATH):
             raise FileNotFoundError('Default config not found, re-installing ChatBridgeReforged may fix the problem')
             # self.logger.bug()
         else:
             shutil.copyfile(DEFAULT_CONFIG_PATH, CONFIG_PATH)
             self.logger.info("Default config is used now")
-            self.logger.debug("Exit now")
+            self.logger.info("Exit now")
             exit(0)  # exit here
 
-    def _check_config_info(self, data):
-        self.logger.debug('Checking config.yml')
-        if not self._check_node(data, CONFIG_STRUCTURE):
-            try:
-                raise ValueError('Some config is missing in config.yml')
-            except Exception:
-                self.logger.bug(False)
-            self.logger.warning('Please check config.yml carefully')
+    def __check_config_info(self, data):
+        self.logger.debug('Checking config.yml', "CBR")
+        if not self.__check_node(data, CONFIG_STRUCTURE):
+            raise ValueError('Some config is missing in config.yml')
         else:
-            self.logger.info('Checked config')
-        data.keys()
+            self.logger.info('Finish checking config')
 
-    def _check_node(self, data, structure):
+    def __check_node(self, data, structure):
         check_node_result = True
         for i in range(len(structure)):
-            self.logger.debug('Checking for ' + structure[i]['name'])
             struct = structure[i]
-            if not struct['name'] in data.keys() or 'sub_structure' in struct.keys() and not self._check_node(
-                    data[struct['name']], struct['sub_structure']):
+            if struct['name'] not in data.keys():
                 check_node_result = False
                 self.logger.error('Config ' + struct['name'] + ' not exist in config.yml')
-            if 'sub_structure' not in struct.keys():
-                if struct['name'] == 'client_servers':
-                    msg = 'Client_servers are: '
+                break
+            elif 'sub_structure' in struct.keys():
+                self.logger.debug(f"Checking for '{structure[i]['name']}'", "CBR")
+                if not self.__check_node(data[struct['name']], struct['sub_structure']):
+                    check_node_result = False
+                    self.logger.error('Config ' + struct['name'] + ' not exist in config.yml')
+                    break
+            else:
+                if struct['name'] == 'clients':
+                    msg = 'Clients are:'
                     for j in range(len(data[struct['name']])):
-                        msg = msg + f" {data[struct['name']][j]['name']} "
-                    self.logger.debug(msg)
+                        msg = msg + f" '{data[struct['name']][j]['name']}'"
+                    self.logger.debug(msg, "CBR")
                 else:
-                    self.logger.debug(f"Config {struct['name']} values {data[struct['name']]}")
+                    self.logger.debug(f"Config '{struct['name']}' values '{data[struct['name']]}'", "CBR")
         return check_node_result
+
+
+class Config:
+    def __init__(self):
+        self.logger = None
+        self.config_checker = None
+        self.ip = '127.0.0.1'
+        self.port = 30001
+        self.aes_key = "ThisIsTheSecret"
+        self.debug = {"all": True, "CBR": False, "plugin": False}
+        self.version = CHATBRIDGEREFORGED_VERSION
+        self.lib_version = LIB_VERSION
+        self.raw_data = {}
+        self.clients = []
+
+    def __init_data(self):
+        try:
+            self.ip = self.raw_data['server_setting']['host_name']
+            self.port = self.raw_data['server_setting']['port']
+            self.aes_key = self.raw_data['server_setting']['aes_key']
+            self.debug = self.raw_data['debug']
+            self.clients = self.raw_data['clients']
+            self.logger.debug_all = self.raw_data['debug']['all']
+        except AttributeError:
+            exit(0)
+
+    def init_config(self, logger: 'CBRLogger'):
+        self.logger = logger
+        self.config_checker = ConfigChecker(self.logger)
+        self.logger.info(f'version : {self.version}, lib version : {self.lib_version}')
+        self.raw_data = self.config_checker.check_all()
+        self.__init_data()

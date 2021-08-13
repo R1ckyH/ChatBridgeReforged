@@ -11,7 +11,7 @@
 - Better logging(maybe)
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
-  - plugin system will launch soon
+  - permission system will launch soon
 - support to [ChatBridge](https://github.com/TISUnion/ChatBridge) clients so far
 - Some function in ChatBridge will not be supported
 - [Ricky](https://github.com/rickyhoho) is a suck author
@@ -25,7 +25,7 @@
 | config | data type | description |
 |----|----|----|
 | server-setting | `dict` | basic setting of server |
-| ip address | `string`| ip address for hosting |
+| host_name | `string`| ip address for hosting |
 | port | `int` | port for hosting |
 | aes_key | `string` | key for `AES` encryption |
 | clients | `list` | list of clients |
@@ -33,8 +33,8 @@
 | password | `string`| password of client |
 | debug | `dict` | debug mode |
 | all | `bool` | debug mode switch |
-| CBR | `bool` | not available to use now |
-| plugin | `bool` | not available to use now |
+| CBR | `bool` | debug mode switch |
+| plugin | `bool` | debug mode switch |
 
 ## Plugin
 

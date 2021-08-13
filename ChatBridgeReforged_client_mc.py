@@ -49,7 +49,7 @@ help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Beta-010',
+    'version': '0.0.1-Beta-011',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -351,7 +351,7 @@ class CBRTCPClient(Network):
             print_msg("Connection already closed", 2, info, server=self.server)
 
     def close_connection(self, target=''):
-        if not self.socket and self.connected:
+        if self.socket is not None and self.connected:
             self.cancelled = True
             self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
             self.socket.close()

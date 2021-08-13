@@ -7,9 +7,7 @@ from cbr.lib.logger import CBRLogger
 
 class AESCryptor:
     """
-    key and text needs to be utf-8 str in python2 or str in python3
-
-    By ricky, most of the code keep cause me dose not want to change this part
+    By ricky, most of the AESCryptor copied from ChatBridge cause me dose not want to change this part
     """
     def __init__(self, key, logger: CBRLogger, mode=AES.MODE_CBC):
         self.key = self.__to16length(key)

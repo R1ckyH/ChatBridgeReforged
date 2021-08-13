@@ -11,7 +11,7 @@
 # Server setting
 # The ip_address, port and aes_key that CBR use
 server_setting:
-  ip_address: '127.0.0.1'
+  host_name: '127.0.0.1'
   port: 30001
   aes_key: 'ThisIsTheSecret'
 

@@ -16,15 +16,16 @@ class ServerInterface:
         self._server = server
         self.logger: 'CBRLogger' = server.logger
         self.__result_cache = None
+        # TODO: tell_msg
 
     def is_client_online(self, client):
         """
             Check clients online or not
         """
-        return self._server.clients[client]['online']
+        return self._server.clients[client].online
 
     def is_mc_client(self, client):
-        if self._server.clients[client]['type'] == 'mc':
+        if self._server.clients[client].type == 'mc':
             return True
         else:
             return False
@@ -68,7 +69,7 @@ class ServerInterface:
                 trio.from_thread.run_sync(self.logger.info, i)
             return
         message = json.dumps(self._server.process.msg_formatter("CBR", "", msg))
-        trio.from_thread.run(self._server.send_msg, self._server.clients[target]['stream'], message)
+        trio.from_thread.run(self._server.send_msg, self._server.clients[target].stream, message)
 
     def send_command(self, target, cmd) -> str:
         """
@@ -99,8 +100,8 @@ class ServerInterface:
         self.__result_cache.update({target: await self.__wait_cmd_result(target, cmd)})
 
     async def __wait_cmd_result(self, target, cmd):
-        with trio.move_on_after(2) as self._server.clients[target]['cmdlock']:
-            self._server.clients[target]['cmdresult'] = None
+        with trio.move_on_after(2) as self._server.clients[target].cmdlock:
+            self._server.clients[target].cmd_result = None
             await self._server.process.send_cmd(cmd, target)
             await trio.sleep(2)
-        return self._server.clients[target]['cmdresult']
+        return self._server.clients[target].cmd_result

@@ -26,7 +26,7 @@ class PluginEvent:
                 self.register_event_plugins.update({plugin.id: plugin})
 
     async def plugin_run_event(self, server_interface: ServerInterface, *args):
-        self.logger.debug(f"Start '{self.event}'")
+        self.logger.debug(f"Start '{self.event}'", module='plugin')
         async with trio.open_nursery() as nursery:
             for i in self.register_event_plugins:
                 plugin: 'Plugin' = self.register_event_plugins[i]
@@ -34,11 +34,11 @@ class PluginEvent:
                 nursery.start_soon(self._wait_run, plugin.id, run, server_interface, *args)
 
     async def _wait_run(self, plugin_id, run, server_interface: ServerInterface, *args):
-        self.logger.debug(f"Start '{self.event}' of {plugin_id}")
+        self.logger.debug(f"Start '{self.event}' of {plugin_id}", module='plugin')
         with trio.move_on_after(1) as cancel_scope:
             await trio.to_thread.run_sync(self.__run, run, cancel_scope, server_interface, *args)
             await trio.sleep(1)
-        self.logger.debug(f"Finish '{self.event}' of {plugin_id}")
+        self.logger.debug(f"Finish '{self.event}' of {plugin_id}", module='plugin')
 
     def __run(self, run, cancel_scope: trio.CancelScope, server_interface: ServerInterface, *args):
         try:
@@ -58,6 +58,9 @@ class PluginEventManager:
         self.__register_events("on_test")
         self.__register_events("on_message")
         self.__register_events("on_load")
+        # TODO: on_load and on_unload
+        # TODO: on_player_join and on_player_left
+        # TODO: register event by plugin(may not do)
 
     def __register_events(self, event):
         self.events.update({event: PluginEvent(event, self.logger)})
@@ -72,4 +75,4 @@ class PluginEventManager:
             self.logger.error(f"Event '{event}' haven't been register")
             return
         await self.events[event].plugin_run_event(server_interface, *args)
-        self.logger.debug(f"Finish event '{event}'")
+        self.logger.debug(f"Finish event '{event}'", module='plugin')

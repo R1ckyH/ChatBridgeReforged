@@ -4,6 +4,8 @@ import traceback
 
 from os import path, mkdir
 
+from cbr.lib.config import Config
+
 log_file = 'logs'
 log_path = log_file + "/latest.log"
 
@@ -29,20 +31,18 @@ class StdoutFilter(logging.Filter):
 
 
 class CBRLogger(logging.getLoggerClass()):
-    def __init__(self, name, config):
+    def __init__(self, name, config: Config):
         super().__init__(name)
-        if config.get_data():
-            self.debug_all = bool(config.data['debug']['all'])
-        else:
-            self.debug_all = True
+        self.file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        self.stdout_handler = logging.StreamHandler(sys.stdout)
+        self.debug_config = config.debug
 
-    def formatter(self, datefmt=None):
-        return logging.Formatter('[%(name)s][%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=datefmt)
+    def formatter(self, date=None):
+        return logging.Formatter('[%(name)s][%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=date)
 
     def setup(self):
-        self.check_file()
-        self.stdout_handler = logging.StreamHandler(sys.stdout)
-        self.file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        if not path.exists(log_file):
+            mkdir(log_file)
         self.stdout_handler.setFormatter(self.formatter('%H:%M:%S'))
         self.file_handler.setFormatter(self.formatter('%Y-%m-%d %H:%M:%S'))
         self.file_handler.addFilter(StdoutFilter())
@@ -50,24 +50,20 @@ class CBRLogger(logging.getLoggerClass()):
         self.addHandler(self.file_handler)
         self.setLevel(logging.DEBUG)
 
-    def check_file(self):
-        if not path.exists(log_file):
-            mkdir(log_file)
-
     def bug(self, exit_now=True, error=False):
         for line in traceback.format_exc().splitlines():
             if error:
                 self.error(line, exc_info=False)
             else:
-                self.debug(line)
+                self.debug(line, "CBR")
         if exit_now:
             if self.level > logging.DEBUG and not error:
                 self.error('ERROR exist, use debug mode for more information')
             exit(0)
 
-    def debug(self, msg, **kwargs) -> None:  # thx xd
-        if self.debug_all:
-            super().debug(msg, **kwargs)
+    def debug(self, msg, module='all', *args) -> None:  # thx xd
+        if self.debug_config[module] or self.debug_config['all']:
+            super().debug(msg, *args)
 
     # no use
     '''def restart_all(self):
@@ -77,15 +73,15 @@ class CBRLogger(logging.getLoggerClass()):
         self.addHandler(self.stdout_handler)
         self.addHandler(self.file_handler)'''
 
-    def forcedebug(self):
-        self.debug_all = not self.debug_all
-        self.info(f'- Force debug mode: {self.debug_all}')
-        self.debug('test')
+    def force_debug(self, module='all'):
+        self.debug_config[module] = not self.debug_config[module]
+        self.info(f'- Force debug mode of {module}: {self.debug_config[module]}')
+        self.debug('test', "CBR")
 
 
 if __name__ == '__main__':
     logging.setLoggerClass(CBRLogger)
-    b = CBRLogger("CBR")
+    b = CBRLogger("CBR", Config())
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s')
     b.setLevel(20)
     b.info("testing")

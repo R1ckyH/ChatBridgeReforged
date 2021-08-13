@@ -1,6 +1,11 @@
+"""
+data pack here
+"""
 import sys
 
 # Config
+# TODO: tell msg
+# TODO: player join and player left
 '''
 plugin:##CBR
 数据包格式：
