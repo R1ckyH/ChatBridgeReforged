@@ -27,25 +27,41 @@ def players_no_bot(player_list):
     return player_string
 
 
-def on_message(server: ServerInterface, info: MessageInfo):
+def list_player(server, info):
     if info.content == '##list' or info.content == "##online":
         info.cancel_send_message()
         online_mc_client = server.get_online_mc_clients()
         players = {}
-        results = server.send_servers_command(online_mc_client, 'list')
+        results = server.send_servers_command('list', online_mc_client)
         if results is None:
-            server.send_msg(info.client, "No information")
+            server.tell_message("No information", info.client, info.player)
             return
         for i in results.keys():
             if results[i] is not None:
                 if results[i].startswith("Unknown command"):
                     players.update({i: "Command Error"})
                 else:
-                    playerstring = players_no_bot(results[i].split('online: ')[1].split(', '))
-                    players.update({i: playerstring})
+                    player_string = players_no_bot(results[i].split('online: ')[1].split(', '))
+                    players.update({i: player_string})
             else:
                 players.update({i: "Command Failed"})
         message = "- Online players:"
         for i in range(len(online_mc_client)):
             message += f"\n[{online_mc_client[i]}]: {players[online_mc_client[i]]}"
-        server.send_msg(info.client, message)
+        server.tell_message(message, info.client, info.player)
+
+
+def on_message(server: ServerInterface, info: MessageInfo):
+    list_player(server, info)
+
+
+def on_command(server, info):  # not recommend to do, but you can do it
+    list_player(server, info)
+
+
+def on_load(server: ServerInterface):
+    server.register_help_message("##list", "list out the online players in servers")
+
+
+def on_unload(server):
+    pass

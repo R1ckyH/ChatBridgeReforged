@@ -14,9 +14,10 @@ When the server has trigger specific event, CBR will call relevant `Function` of
 
 | Function | When to call | Available | Reference usage |
 |---|---|---|---|
-| on_load(server, old_module) | A plugin gets loaded | No | The new plugin inherits information from the old plugin |
-| on_unload(server) | A plugin gets unloaded | No | Clean up or turn off functionality of the old plugin |
+| on_load(server) | A plugin gets loaded | YES | The new plugin inherits information from the old plugin |
+| on_unload(server) | A plugin gets unloaded | YES | Clean up or turn off functionality of the old plugin |
 | on_message(server, info) | A message action have been receive in server | YES | Response to the message from the clients |
+| on_command(server, info) | A command action have been receive in server | YES | Response to the command from the server |
 | on_player_joined(server, player, info) | A player joined the server | No | Response to player joining with the given info instance |
 | on_player_left(server, player, info) | A player left the server | No | Response to player leaving |
 
@@ -36,7 +37,7 @@ It has the following variables:
 
 | Variable | Type | Usage |
 |---|---|---|
-| logger | (CBRLogger)logging.Logger | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. [docs](https://docs.python.org/3/library/logging.html#logger-objects)
+| logger | CBRLogger(like `logging.Logger`) | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. [docs](https://docs.python.org/3/library/logging.html#logger-objects)
 
 It also has these following methods:
 
@@ -51,10 +52,10 @@ It also has these following methods:
 
 | Function | Usage |
 |---|---|
-| send_command(target, command) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None`|
-| send_servers_command(targets, command) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None`|
-| send_msg(target, msg) | Send msg to `target` server|
-| tell_msg(target, player, text) | todo|
+| send_command(command, target) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
+| send_servers_command(command, targets) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
+| send_message(msg, target) | Send `msg` to `target` server |
+| tell_message(msg, target, player) | Send `msg` to `player` in `target` server |
 
 **Other**
 
@@ -62,13 +63,13 @@ It also has these following methods:
 |---|---|
 | get_permission_level(obj) | todo |
 | set_permission_level(player, level) | todo |
-| add_help_message(prefix, message) | Add a help message with prefix `prefix` and message `message` to the `##help` data of CBR. The `##help` data of CBR will be reset before plugin reloading. **It is recommended to add relevant information in `on_load ()` method call.** |
+| register_help_message(prefix, message) | Add a help message with prefix `prefix` and message `message` to the `##help` data of CBR. The `##help` data of CBR will be reset before plugin reloading. **It is recommended to add relevant information in `on_load ()` method call.** |
 | is_client_online(client) | Check `client` is online or not |
 | is_mc_client(client) | Check `client` is `mc_client` or not. **`client` will register itself as `mc_client` if need** |
 | is_client_online(client) | Check `client` is online or not |
-| get_online_clients() | get list of `online` clients|
-| get_mc_clients() | get list of `mc` clients|
-| get_online_mc_clients() | get list of `online` `mc` clients|
+| get_online_clients() | get list of `online` clients |
+| get_mc_clients() | get list of `mc` clients |
+| get_online_mc_clients() | get list of `online` `mc` clients |
 
 ### info
 
@@ -117,7 +118,7 @@ The attributes of the info object are:
 
 - The current working directory is the folder where CBR is in. **DO NOT** change it since that will mess up everything
 - For the `info` parameter in `on_message` don't modify it, just only read it
-- Call `server.add_help_message()` in `on_load()` to add some necessary tips for your plugin so the player can use `!!help` command to know about your plugin **TODO**
+- Call `server.register_help_message()` in `on_load()` to add some necessary tips for your plugin so the player can use `!!help` command to know about your plugin **TODO**
 - Keep the environment clean. Store your data files in a custom folder in `plugins/`, your config file in `config/` folder and your log file in `log/` folder will be a good choice
 - `on_unload()` allows you to have as many times as you want to save your data, **never stuck it**. Be carefully, don't enter an endless loop, CBR will waiting for you to finish
 

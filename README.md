@@ -13,7 +13,7 @@
 - more feature will be release in the future
   - permission system will launch soon
 - support to [ChatBridge](https://github.com/TISUnion/ChatBridge) clients so far
-- Some function in ChatBridge will not be supported
+  - Some function in ChatBridge will not be supported
 - [Ricky](https://github.com/rickyhoho) is a suck author
   - But he will try his best to maintain this repository
   - Please cheer him so that he will be happy to maintain this repository

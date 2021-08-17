@@ -74,6 +74,7 @@ class CBRTCPServer(Network):
         self.plugin_manager = PluginManager(self.server_interface, self.logger)
         self.process = ServerProcess(self, self.logger)
         self.nursery = None
+        self.__register_help_msg = []
         # TODO: better exception
 
     def start(self):
@@ -90,10 +91,12 @@ class CBRTCPServer(Network):
 
     async def stop(self):
         self.logger.debug('Server closing', "CBR")
-        await self.close_all_connection()
-        self.logger.info("Server closed")
-        self.nursery.cancel_scope.cancel()
         self.process.cancelled = True
+        await self.close_all_connection()
+        self.nursery.cancel_scope.cancel()
+        self.server_interface._server_running = False
+        await self.plugin_manager.unload_all_plugins()
+        self.logger.info("Server closed")
 
     def setup_client(self):
         client_config = self.config.clients
@@ -112,11 +115,11 @@ class CBRTCPServer(Network):
     async def main(self):
         self.logger.info(f'Server starting at pid {os.getpid()}')
         try:
+            await self.plugin_manager.reload_all_plugins()
             async with trio.open_nursery() as self.nursery:
                 self.nursery.start_soon(self.start_server)
                 self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
                 self.nursery.start_soon(trio.to_thread.run_sync, self.input_process)
-                self.nursery.start_soon(self.plugin_manager.reload_all_plugins)
         except KeyboardInterrupt:
             await self.stop()
 
@@ -171,3 +174,15 @@ class CBRTCPServer(Network):
                 trio.from_thread.run(self.process.msg_process, msg, self.nursery)
             except Exception:
                 self.logger.bug(exit_now=False, error=True)
+
+    def get_register_help_msg(self):
+        msg = ''
+        for i in self.__register_help_msg:
+            msg = msg + f"{i['prefix']}: §f{i['command']}\n"
+        return msg
+
+    def add_register_help_msg(self, prefix, msg):
+        for i in range(len(self.__register_help_msg)):
+            if self.__register_help_msg[i]['prefix'] == prefix:
+                self.__register_help_msg.pop(i)
+        self.__register_help_msg.append({'prefix': prefix, 'command': msg})

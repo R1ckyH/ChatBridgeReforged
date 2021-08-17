@@ -77,23 +77,29 @@ class Process:
         else:
             self.logger.info(f'- {target}: Alive - time = {ping}ms')
 
-    async def message_process(self, client, player, msg, current_client):
+    async def message_process(self, client, player, msg, current_client, event='on_message'):
         message = self.message_formatter(client, player, msg)
         info = MessageInfo(client, msg, player, self.logger)
-        try:
-            await self.plugin_manager.run_event('on_message', info)
-        except Exception:
-            self.logger.bug(exit_now=False, error=True)
-        self.logger.info(message)
-        if info.is_send_message():
-            await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
+        async with trio.open_nursery() as nursery:
+            await self.plugin_manager.run_event(event, info, nursery=nursery)
+            if event == 'on_message':
+                self.logger.info(message)
+                if info.is_send_message():
+                    await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
+            else:
+                if info.is_send_message():
+                    return False
+                else:
+                    return True
 
-    def msg_formatter(self, client, player, msg):
-        message = {"action": "message",
-                   "client": client,
-                   "player": player,
-                   "message": msg
-                   }
+    def msg_formatter(self, client, player, msg, receiver=''):
+        message = {
+            "action": "message",
+            "client": client,
+            "player": player,
+            "message": msg,
+            "receiver": receiver
+           }
         return message
 
 
@@ -138,8 +144,14 @@ class ServerProcess(Process):
     async def msg_process(self, msg: str, nursery: trio.Nursery):
         args = msg.split(' ')
         length = len(args)
+        cancel = await self.message_process('CBR', '', msg, "CBR", 'on_command')
+        if cancel:
+            return
         if msg == 'help' or msg == '?':
             self.help_msg()
+        if msg == '##help' or msg == '#?':
+            for i in self.server.get_register_help_msg().splitlines():
+                self.logger.info(i)
         elif msg == 'list':
             self.online_list()
         elif msg.startswith('stop') or msg == 'end':
@@ -167,7 +179,19 @@ class ServerProcess(Process):
             for thread in threading.enumerate():
                 print(thread.name)
         elif msg == 'reloadall':
-            await self.plugin_manager.reload_all_plugins()
+            nursery.start_soon(self.server.plugin_manager.reload_all_plugins)
+            """
+            elif msg.startswith('plg'):
+                if length > 1 and args[1] in self.server.clients.keys():
+                    target = args[1]
+                    if self.server.clients[target].online:
+                        cmd = msg.replace('cmd ' + args[1] + ' ', '')
+                        await self.send_cmd(cmd, target=args[1])
+                    else:
+                        self.logger.error("Client not online")
+                else:
+                    self.logger.error("Client not found")
+            """
         elif msg.startswith('cmd'):
             if length > 1 and args[1] in self.server.clients.keys():
                 target = args[1]
@@ -229,11 +253,11 @@ class ClientProcess(Process):
         return client_type
 
     def version_check(self, msg):
-        if 'libversion' not in msg.keys():
+        if 'lib_version' not in msg.keys():
             lib_version = None
             self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {self.server.lib_version}")
         else:
-            lib_version = msg['libversion']
+            lib_version = msg['lib_version']
             if lib_version != self.server.lib_version:
                 self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {self.server.lib_version}")
         return lib_version
@@ -274,6 +298,9 @@ class ClientProcess(Process):
             elif msg['action'] == 'message':
                 nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'],
                                    self.current_client)
+                if msg['message'] == '##help':
+                    msg = self.msg_formatter("CBR", '', self.server.get_register_help_msg(), msg['player'])
+                    await self.server.send_msg(stream, json.dumps(msg))
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')

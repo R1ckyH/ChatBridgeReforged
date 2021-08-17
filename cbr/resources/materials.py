@@ -4,8 +4,6 @@ data pack here
 import sys
 
 # Config
-# TODO: tell msg
-# TODO: player join and player left
 '''
 plugin:##CBR
 数据包格式：
@@ -21,8 +19,8 @@ json格式：
     "action": "login",
     "name": "ClientName",
     "password": "ClientPassword"
-    "libversion" : "version"
-    "type" : "client_type"
+    "lib_version" : "Version"
+    "type" : "ClientType"
 }
 返回登录情况：server -> client 返回结果
     "result": login success" // 成功
@@ -33,6 +31,7 @@ json格式：
     "action": "message",
     "client": "CLIENT_NAME",
     "player": "PLAYER_NAME",
+    "receiver": "PLAYER_NAME",
     "message": "MESSAGE_STRING"
 }
 
