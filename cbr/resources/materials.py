@@ -3,7 +3,8 @@ data pack here
 """
 import sys
 
-# Config
+# Config # TODO execute_command
+# TODO plugin api with mcdr
 '''
 plugin:##CBR
 数据包格式：
@@ -33,6 +34,9 @@ json格式：
     "player": "PLAYER_NAME",
     "receiver": "PLAYER_NAME",
     "message": "MESSAGE_STRING"
+    "extra": {
+        "custom": "custom"
+    }
 }
 
 结束连接： client <-> server

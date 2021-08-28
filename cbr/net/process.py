@@ -12,14 +12,14 @@ if TYPE_CHECKING:
     from cbr.net.tcpserver import CBRTCPServer
 
 help_msg = '''====================CBR====================
-help/? for help msg
-list for list clients in config.yml
-stop/end stop server
-stop (client name) stop client connection
-ping ping clients
-ping (client name) ping client
-say msg send msg to clients
-cmd (client name) send cmd to client
+help/? -> get help msg
+list -> get clients in config.yml
+stop/end -> stop server
+stop <client name> -> stop client connection
+ping -> ping clients
+ping <client name> -> ping client
+say <msg> -> send msg to clients
+cmd <client name> -> send cmd to client
 '''
 
 
@@ -48,7 +48,7 @@ class Process:
 
     async def msg_mc_server(self, msg, client_except=''):
         for i in self.server.clients.keys():
-            if client_except != i and self.server.clients[i].online:
+            if client_except != i and self.server.clients[i].online and self.server.clients[i].type == 'mc':
                 stream = self.server.clients[i].stream
                 await self.server.send_msg(stream, str(json.dumps(msg)), i)
 
@@ -77,28 +77,37 @@ class Process:
         else:
             self.logger.info(f'- {target}: Alive - time = {ping}ms')
 
-    async def message_process(self, client, player, msg, current_client, event='on_message'):
+    async def message_process(self, client, player, msg, current_client, event='on_message', raw_msg: dict = None):
         message = self.message_formatter(client, player, msg)
-        info = MessageInfo(client, msg, player, self.logger)
+        if raw_msg is not None and 'extra' in raw_msg.keys():
+            extra = raw_msg['extra']
+        else:
+            extra = None
+        if client in self.server.clients.keys():
+            client_type = self.server.clients[client].type
+        else:
+            client_type = ''
+        info = MessageInfo(client, msg, player, client_type, self.logger, extra)
         async with trio.open_nursery() as nursery:
             await self.plugin_manager.run_event(event, info, nursery=nursery)
             if event == 'on_message':
-                self.logger.info(message)
                 if info.is_send_message():
                     await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
+                    self.logger.info(message)
             else:
                 if info.is_send_message():
                     return False
                 else:
                     return True
 
-    def msg_formatter(self, client, player, msg, receiver=''):
+    def msg_formatter(self, client, player, msg, receiver='', extra: dict = None):
         message = {
             "action": "message",
             "client": client,
             "player": player,
             "message": msg,
-            "receiver": receiver
+            "receiver": receiver,
+            "extra": extra
            }
         return message
 
@@ -149,7 +158,7 @@ class ServerProcess(Process):
             return
         if msg == 'help' or msg == '?':
             self.help_msg()
-        if msg == '##help' or msg == '#?':
+        elif msg == '##help' or msg == '#?':
             for i in self.server.get_register_help_msg().splitlines():
                 self.logger.info(i)
         elif msg == 'list':
@@ -297,7 +306,7 @@ class ClientProcess(Process):
                     self.server.clients[self.current_client].ping_lock.cancel()
             elif msg['action'] == 'message':
                 nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'],
-                                   self.current_client)
+                                   self.current_client, 'on_message', msg)
                 if msg['message'] == '##help':
                     msg = self.msg_formatter("CBR", '', self.server.get_register_help_msg(), msg['player'])
                     await self.server.send_msg(stream, json.dumps(msg))

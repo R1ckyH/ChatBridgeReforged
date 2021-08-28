@@ -1,0 +1,6 @@
+trio
+mcdreforged
+pycryptodome
+# for cqhttp
+websocket
+websocket-client

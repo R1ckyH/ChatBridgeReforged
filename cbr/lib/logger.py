@@ -32,13 +32,15 @@ class StdoutFilter(logging.Filter):
 
 class CBRLogger(logging.getLoggerClass()):
     def __init__(self, name, config: Config):
+        if not path.exists(log_file):
+            mkdir(log_file)
         super().__init__(name)
         self.file_handler = logging.FileHandler(log_path, encoding='utf-8')
         self.stdout_handler = logging.StreamHandler(sys.stdout)
         self.debug_config = config.debug
 
     def formatter(self, date=None):
-        return logging.Formatter('[%(name)s][%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=date)
+        return logging.Formatter('[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=date)
 
     def setup(self):
         if not path.exists(log_file):

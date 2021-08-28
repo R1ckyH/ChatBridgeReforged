@@ -5,23 +5,24 @@ import struct
 import threading
 import time
 import traceback
+import websocket
 
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
 
-from utils.rtext import *
+from mcdreforged.api.all import *
 
 debug_mode = False
 ping_time = 60
 timeout = 120
-config_path = 'config/ChatBridgeReforged_client.json'
-log_path = 'logs/ChatBridgeReforged_Client_mc.log'
+CONFIG_PATH = 'config/ChatBridgeReforged_cqhttp.json'
+LOG_PATH = 'logs/ChatBridgeReforged_cqhttp.log'
 client = None
+CQ_bot = None
 prefix = '!!CBR'
 prefix2 = '!!cbr'
-client_color = '6'  # minecraft color code
-CLIENT_TYPE = "mc"
+CLIENT_TYPE = "cqhttp"
 LIB_VERSION = "v20210820"
 
 
@@ -50,20 +51,21 @@ PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
     'version': '0.0.1-Beta-013',
     'name': 'ChatBridgeReforged_Client_mc',
-    'description': 'Reforged of ChatBridge, Client for normal mc server.',
+    'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0'  # 0.9.x+
-    }
+    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
 }
 
 DEFAULT_CONFIG = {
-    "name": "survival",
-    "password": "survival",
+    "name": "cqhttp",
+    "password": "cqhttp",
     "host_name": "127.0.0.1",
     "host_port": 30001,
-    "aes_key": "ThisIsTheSecret"
+    "aes_key": "ThisIsTheSecret",
+    "ws_address": "127.0.0.1",  # not same with host_name
+    "ws_port": "6700",
+    "ws_access_token": "my_access_token",
+    "react_group": "1101314858"
 }
 
 
@@ -82,7 +84,7 @@ def out_log(msg: str, error=False, debug=False, not_spam=False):
         msg = heading + '[INFO]: ' + msg
     if not not_spam:
         print(msg + '\n', end='')
-    with open(log_path, 'a+') as log:
+    with open(LOG_PATH, 'a+', encoding='utf-8') as log:
         log.write(msg + '\n')
 
 
@@ -95,49 +97,141 @@ def bug_log(error=False):
             out_log(bug, debug=True)
 
 
-def print_msg(msg, num, info=None, server=None, player='', error=False, debug=False, not_spam=False):
+def print_msg(msg, num, error=False, debug=False, not_spam=False):
     if num == 0:
-        if server is not None:
-            if player == '':
-                server.say(msg)
-            else:
-                server.tell(player, msg)
         out_log(str(msg), not_spam=not_spam)
     elif num == 1:
-        server.reply(info, msg)
         out_log(str(msg))
     elif num == 2:
-        if info is None or not info.is_player:
-            out_log(msg, error, debug)
-        else:
-            server.reply(info, msg)
+        out_log(msg, error, debug)
 
 
-def load_config():
-    sync = False
-    if not os.path.exists(log_path):
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        out_log('Log file not find', error=True)
-        out_log('Generate new log file')
+# formatters:
+def message_formatter(client_name, player, msg):
+    if player != "":
+        message = f"[{client_name}] <{player}> {msg}"  # chat message
+    else:
+        message = f"[{client_name}] {msg}"
+    return message
 
-    if not os.path.exists(config_path):
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        out_log('Config not find', error=True)
-        out_log('Generate default config')
-        with open(config_path, 'w') as config_file:
-            json.dump(DEFAULT_CONFIG, config_file, indent=4)
-        return DEFAULT_CONFIG
-    with open(config_path, 'r') as config_file:
-        data = dict(json.load(config_file))
-    for keys in DEFAULT_CONFIG.keys():
-        if keys not in data.keys():
-            out_log(f"Config {keys} not found, use default value {DEFAULT_CONFIG[keys]}", error=True)
-            data.update({keys: DEFAULT_CONFIG[keys]})
-            sync = True
-    if sync:
-        with open(config_path, 'w') as config_file:
-            json.dump(data, config_file, indent=4)
-    return data
+
+def msg_json_formatter(client_name, player, msg, extra=None):
+    message = {
+        "action": "message",
+        "client": client_name,
+        "player": player,
+        "message": msg,
+        "extra": extra
+    }
+    return json.dumps(message)
+
+
+def qq_msg_formatter(text, group_id):
+    data = {
+        "action": "send_group_msg",
+        "params": {
+            "group_id": group_id,
+            "message": text
+        }
+    }
+    return json.dumps(data)
+
+
+class Config:
+    def __init__(self, config_path, log_path):
+        self.config_path = config_path
+        self.log_path = log_path
+        self.name = "cqhttp"
+        self.password = "cqhttp"
+        self.host_name = "127.0.0.1"
+        self.host_port = 30001
+        self.aes_key = "ThisIsTheSecret"
+        self.ws_address = "127.0.0.1"  # not same with host_name
+        self.ws_port = 6700
+        self.ws_access_token = "my_access_token"
+        self.ws_url = f"ws://{self.ws_address}:{self.ws_port}/?access_token={self.ws_access_token}"
+        self.react_group = ''
+
+    def check_log_file(self):
+        if not os.path.exists(self.log_path):
+            os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
+            out_log('Log file not find', error=True)
+            out_log('Generate new log file')
+
+    def load_config(self):
+        sync = False
+        self.check_log_file()
+        if not os.path.exists(self.config_path):
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+            out_log('Config not find', error=True)
+            out_log('Generate default config')
+            with open(self.config_path, 'w', encoding='utf-8') as config_file:
+                json.dump(DEFAULT_CONFIG, config_file, indent=4)
+            return DEFAULT_CONFIG
+        with open(self.config_path, 'r', encoding='utf-8') as config_file:
+            data = dict(json.load(config_file))
+        for keys in DEFAULT_CONFIG.keys():
+            if keys not in data.keys():
+                out_log(f"Config {keys} not found, use default value {DEFAULT_CONFIG[keys]}", error=True)
+                data.update({keys: DEFAULT_CONFIG[keys]})
+                sync = True
+        if sync:
+            with open(self.config_path, 'w', encoding='utf-8') as config_file:
+                json.dump(data, config_file, indent=4)
+        return data
+
+    def init_config(self):
+        config_dict = self.load_config()
+        self.name = config_dict['name']
+        self.password = config_dict['password']
+        self.host_name = config_dict['host_name']
+        self.host_port = config_dict['host_port']
+        self.aes_key = config_dict['aes_key']
+        self.ws_address = config_dict['ws_address']  # not same with host_name
+        self.ws_port = config_dict['ws_port']
+        self.ws_access_token = config_dict['ws_access_token']
+        self.ws_url = f"ws://{self.ws_address}:{self.ws_port}/?access_token={self.ws_access_token}"
+        self.react_group = config_dict['react_group']
+
+
+class CQClient(websocket.WebSocketApp):
+    def __init__(self, config: Config):
+        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close)
+        self.config = config
+
+    def start(self):
+        self.run_forever()
+
+    def on_message(self, client_class, message):
+        if not client.connected:
+            return
+        data = json.loads(message)
+        if 'status' in data:
+            out_log('CQBot return status {}'.format(data['status']), debug=True)
+        elif data['post_type'] == 'message' and data['message_type'] == 'group':
+            if str(data['group_id']) == config.react_group and data['anonymous'] is None:
+                msg = msg_json_formatter(client.name, data['sender']['nickname'], data['raw_message'])
+                message = message_formatter(client.name, data['sender']['nickname'], data['raw_message'])
+                out_log(message)
+                client.send_msg(client.socket, msg)
+
+    def on_error(self, client_class, error2=None):
+        bug_log(error2)
+
+    def on_close(self, client_class):
+        out_log("Close connection")
+
+    def send_text(self, text, group_id):  # copy from cb
+        msg = ''
+        length = 0
+        lines = text.rstrip().splitlines(keepends=True)
+        for i in range(len(lines)):
+            msg += lines[i]
+            length += len(lines[i])
+            if i == len(lines) - 1 or length + len(lines[i + 1]) > 500:
+                self.send(qq_msg_formatter(msg, group_id))
+                msg = ''
+                length = 0
 
 
 class AESCryptor:
@@ -223,22 +317,6 @@ class ClientProcess:
         self.client = client_class
         self.end = 0
 
-    def message_formatter(self, client_name, player, msg):
-        if player != "":
-            message = f"§7[§{client_color}{client_name}§7] <{player}> {msg}"  # chat message
-        else:
-            message = f"§7[§{client_color}{client_name}§7] {msg}"
-        return message
-
-    def msg_json_formatter(self, client_name, player, msg):
-        message = {
-            "action": "message",
-            "client": client_name,
-            "player": player,
-            "message": msg
-        }
-        return json.dumps(message)
-
     def ping_test(self):
         if not self.client.connected:
             return -2
@@ -260,13 +338,13 @@ class ClientProcess:
                 return
         self.end = -1
 
-    def ping_log(self, ping_ms, info=None, server=None):
+    def ping_log(self, ping_ms):
         if ping_ms == -2:
-            print_msg(f'- Offline', 2, info, server=server)
+            print_msg(f'- Offline', 2)
         elif ping_ms == -1:
-            print_msg(f'- No response - time = 2000ms', 2, info, server=server)
+            print_msg(f'- No response - time = 2000ms', 2)
         else:
-            print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
+            print_msg(f'- Alive - time = {ping_ms}ms', 2)
 
     def process_msg(self, msg, socket: soc.socket):
         if 'action' in msg.keys():
@@ -282,61 +360,47 @@ class ClientProcess:
                     self.end = time.time()
             elif msg['action'] == 'message':
                 for i in msg['message'].splitlines():
-                    message = self.message_formatter(msg['client'], msg['player'], i)
-                    print_msg(message, num=0, player=msg['receiver'], server=self.client.server, not_spam=True)
+                    message = message_formatter(msg['client'], msg['player'], i)
+                    print_msg(message, num=0)
+                message = message_formatter(msg['client'], msg['player'], msg['message'])
+                CQ_bot.send_text(message, group_id=self.client.config.react_group)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 out_log(f'Connection closed from server')
-            elif msg['action'] == 'command':
-                command = msg['command']
-                msg['result']['responded'] = True
-                if self.client.server is not None and self.client.server.is_rcon_running():
-                    result = self.client.server.rcon_query(command)
-                    print(result)
-                    if result is not None:
-                        msg['result']['type'] = 0
-                        msg['result']['result'] = result
-                    else:
-                        msg['result']['type'] = 1
-                else:
-                    msg['result']['type'] = 2
-                self.client.send_msg(socket, json.dumps(msg))
 
 
 class CBRTCPClient(Network):
-    def __init__(self, config_data):
-        super().__init__(config_data['aes_key'])
-        self.ip = config_data['host_name']
-        self.port = config_data['host_port']
-        self.name = config_data['name']
-        self.password = config_data['password']
+    def __init__(self, config: Config):
+        super().__init__(config.aes_key)
+        self.config = config
+        self.ip = config.host_name
+        self.port = config.host_port
+        self.name = config.name
+        self.password = config.password
         self.server = None
         self.socket = None
         self.connected = False
         self.cancelled = False
         self.process = ClientProcess(self)
 
-    def setup(self, config_data):
-        super().__init__(config_data['aes_key'])
-        self.ip = config_data['host_name']
-        self.port = config_data['host_port']
-        self.name = config_data['name']
-        self.password = config_data['password']
+    def setup(self, new_config: Config):
+        super().__init__(new_config.aes_key)
+        self.ip = new_config.host_name
+        self.port = new_config.host_port
+        self.name = new_config.name
+        self.password = new_config.password
         self.connected = False
         self.cancelled = False
 
-    def try_start(self, info=None):
+    def try_start(self):
         if not self.connected:
-            threading.Thread(target=self.start, name='CBR', args=(info,), daemon=True).start()
+            threading.Thread(target=self.start, name='CBR', daemon=True).start()
         else:
-            if info is not None:
-                print_msg("Already Connected to server", 2, info, server=self.server, error=True)
-            else:
-                out_log("Already Connected to server", debug=True)
+            out_log("Already Connected to server", debug=True)
 
-    def start(self, info):
+    def start(self):
         self.cancelled = False
-        print_msg(f"Connecting to server with client {self.name}", 2, info, server=self.server)
+        print_msg(f"Connecting to server with client {self.name}", 2)
         out_log(f'Open connection to {self.ip}:{self.port}')
         out_log(f'version : {PLUGIN_METADATA["version"]}, lib version : {LIB_VERSION}')
         self.socket = soc.socket()
@@ -349,12 +413,12 @@ class CBRTCPClient(Network):
         self.socket.settimeout(timeout)
         self.handle_echo()
 
-    def try_stop(self, info=None):
+    def try_stop(self):
         if self.connected:
             self.close_connection()
-            print_msg("Closed connection", 2, info, server=self.server)
+            print_msg("Closed connection", 2)
         else:
-            print_msg("Connection already closed", 2, info, server=self.server)
+            print_msg("Connection already closed", 2)
 
     def close_connection(self, target=''):
         if self.socket is not None and self.connected:
@@ -365,16 +429,17 @@ class CBRTCPClient(Network):
             out_log("Connection closed to server", debug=True)
         self.connected = False
 
-    def reload(self, info=None):
-        print_msg("Reload ChatBridgeReforged Client now", 2, info, server=self.server)
+    def reload(self):
+        print_msg("Reload ChatBridgeReforged Client now", 2)
         self.close_connection()
-        new_config = load_config()
+        new_config = Config(CONFIG_PATH, LOG_PATH)
+        new_config.init_config()
         time.sleep(0.1)
         self.setup(new_config)
-        print_msg("Reload Config", 2, info, server=self.server)
-        self.try_start(info)
+        print_msg("Reload Config", 2)
+        self.try_start()
         time.sleep(0.1)
-        print_msg(f"CBR status: Online = {client.connected}", 2, info, server=self.server)
+        print_msg(f"CBR status: Online = {client.connected}", 2)
 
     def keep_alive(self):
         while self.socket is not None and self.connected:
@@ -453,86 +518,27 @@ def input_process(message):
         for thread in threading.enumerate():
             print(thread.name)
     elif client.connected:
-        client.send_msg(client.socket, client.process.msg_json_formatter(config['name'], '', message))
+        client.send_msg(client.socket, msg_json_formatter(config.name, '', message))
     else:
         out_log("Not Connected")
 
 
+def auto_restart():
+    while True:
+        time.sleep(5)
+        if not client.connected:
+            client.try_start()
+
+
 if __name__ == '__main__':
-    config = load_config()
+    config = Config(CONFIG_PATH, LOG_PATH)
+    config.init_config()
     client = CBRTCPClient(config)
     client.try_start()
+    out_log("Starting CQ services")
+    CQ_bot = CQClient(config)
+    threading.Thread(target=auto_restart, name="auto_restart", daemon=True).start()
+    cq = threading.Thread(target=CQ_bot.start, name="CQHTTP", daemon=True).start()
     while True:
         input_msg = input()
         input_process(input_msg)
-
-
-def on_info(server, info):
-    global debug_mode
-    msg = info.content
-    if msg.startswith(prefix) or msg.startswith(prefix2):
-        # info.cancel_send_to_server()
-        # if msg.endswith('<--[HERE]'):
-        #    msg = msg.replace('<--[HERE]', '')
-        args = msg.split(' ')
-        if len(args) == 1 or args[1] == 'help':
-            server.reply(info, help_msg)
-        elif args[1] == 'start':
-            client.try_start(info)
-        elif args[1] == 'status':
-            print_msg(f"CBR status: Online = {client.connected}", 2, info, server=server)
-        elif args[1] == 'stop':
-            client.try_stop(info)
-        elif args[1] == 'reload':
-            client.reload(info)
-        elif args[1] == 'restart':
-            client.try_stop(info)
-            time.sleep(0.1)
-            client.try_start(info)
-            time.sleep(0.1)
-            print_msg(f"CBR status: Online = {client.connected}", 2, info, server=server)
-        elif args[1] == 'ping':
-            ping_ms = client.process.ping_test()
-            client.process.ping_log(ping_ms, info, server=server)
-        elif args[1] == 'forcedebug' and server.get_permission_level(info.player) > 2:
-            debug_mode = not debug_mode
-            print_msg(f'Force debug: {debug_mode}', 2, info, server=server)
-        elif args[1] == 'test':
-            for thread in threading.enumerate():
-                print(thread.name)
-        else:
-            print_msg("Command not Found", 2, info, server=server)
-    elif info.is_player:
-        if client is None:
-            return
-        client.try_start()
-        if client.connected:
-            client.send_msg(client.socket, client.process.msg_json_formatter(client.name, info.player, info.content))
-
-
-def on_player_joined(server, name, info=None):
-    client.try_start()
-    client.send_msg(client.socket, client.process.msg_json_formatter(client.name, '', name + ' joined ' + client.name))
-
-
-def on_player_left(server, name, info=None):
-    client.try_start()
-    client.send_msg(client.socket, client.process.msg_json_formatter(client.name, '', name + ' left ' + client.name))
-
-
-def on_unload(server):
-    client.close_connection()
-
-
-def on_load(server, old):
-    global client
-    if old is not None:
-        try:
-            old.client.try_stop()
-        except Exception:
-            bug_log(error=True)
-    server.add_help_message(prefix, "ChatBridgeReforged")
-    config_dict = load_config()
-    client = CBRTCPClient(config_dict)
-    client.try_start()
-    client.server = server

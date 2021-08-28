@@ -3,6 +3,8 @@ import os
 import struct
 import trio
 
+from functools import partial
+
 from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
 from cbr.net.process import ServerProcess, ClientProcess
@@ -87,7 +89,8 @@ class CBRTCPServer(Network):
         try:
             await trio.serve_tcp(self.handle_echo, self.port, host=self.ip)
         except OSError:
-            self.logger.bug(exit_now=True, error=True)
+            self.logger.bug(exit_now=False, error=True)
+            await self.stop()
 
     async def stop(self):
         self.logger.debug('Server closing', "CBR")
@@ -119,7 +122,7 @@ class CBRTCPServer(Network):
             async with trio.open_nursery() as self.nursery:
                 self.nursery.start_soon(self.start_server)
                 self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
-                self.nursery.start_soon(trio.to_thread.run_sync, self.input_process)
+                self.nursery.start_soon(partial(trio.to_thread.run_sync, self.input_process, cancellable=True))
         except KeyboardInterrupt:
             await self.stop()
 
@@ -127,7 +130,11 @@ class CBRTCPServer(Network):
         self.clients[client_name].process = process
 
     async def handle_echo(self, stream: trio.SocketStream):
-        address = stream.socket.getpeername()
+        try:
+            address = stream.socket.getpeername()
+        except Exception:
+            self.logger.bug(False, True)
+            self.logger.critical("Error in get peer name", "CBR")
         self.logger.debug(f"new session started from {address}", "CBR")
         client_process = ClientProcess(self, self.logger)
         async with trio.open_nursery() as nursery:

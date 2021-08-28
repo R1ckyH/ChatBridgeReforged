@@ -22,7 +22,7 @@ prefix = '!!CBR'
 prefix2 = '!!cbr'
 client_color = '6'  # minecraft color code
 CLIENT_TYPE = "mc"
-LIB_VERSION = "v20210817"
+LIB_VERSION = "v20210820"
 
 
 def rtext_cmd(txt, msg, cmd):
@@ -32,22 +32,23 @@ def rtext_cmd(txt, msg, cmd):
 def help_formatter(mcdr_prefix, command, first_msg, click_msg, use_command=None):
     if use_command is None:
         use_command = command
-    return rtext_cmd(f'{mcdr_prefix} {command} {first_msg}', f'Click me to {click_msg}', f'{mcdr_prefix} {use_command}')
+    msg = f'{mcdr_prefix} {command} §a{first_msg}'
+    return rtext_cmd(msg, f'Click me to {click_msg}', f'{mcdr_prefix} {use_command}')
 
 
 help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
-''' + help_formatter(prefix, 'help', '§ashow help message§r', 'show help message') + '''
-''' + help_formatter(prefix, 'start', '§astart ChatBridgeReforged client§r', 'start') + '''
-''' + help_formatter(prefix, 'stop', '§astop ChatBridgeReforged client§r', 'stop') + '''
-''' + help_formatter(prefix, 'status', '§ashow status of ChatBridgeReforged client§r', 'show status') + '''
-''' + help_formatter(prefix, 'reload', '§areload ChatBridgeReforged client§r', 'reload') + '''
-''' + help_formatter(prefix, 'restart', '§arestart ChatBridgeReforged client§r', 'restart') + '''
-''' + help_formatter(prefix, 'ping', '§aping ChatBridgeReforged server§r', 'ping') + '''
+''' + help_formatter(prefix, 'help', 'show help message§r', 'show help message') + '''
+''' + help_formatter(prefix, 'start', 'start ChatBridgeReforged client§r', 'start') + '''
+''' + help_formatter(prefix, 'stop', 'stop ChatBridgeReforged client§r', 'stop') + '''
+''' + help_formatter(prefix, 'status', 'show status of ChatBridgeReforged client§r', 'show status') + '''
+''' + help_formatter(prefix, 'reload', 'reload ChatBridgeReforged client§r', 'reload') + '''
+''' + help_formatter(prefix, 'restart', 'restart ChatBridgeReforged client§r', 'restart') + '''
+''' + help_formatter(prefix, 'ping', 'ping ChatBridgeReforged server§r', 'ping') + '''
 §b-----------------------------------------------§r'''
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_client_mc',
-    'version': '0.0.1-Beta-012',
+    'version': '0.0.1-Beta-013',
     'name': 'ChatBridgeReforged_Client_mc',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -61,7 +62,7 @@ DEFAULT_CONFIG = {
     "name": "survival",
     "password": "survival",
     "host_name": "127.0.0.1",
-    "port": 30001,
+    "host_port": 30001,
     "aes_key": "ThisIsTheSecret"
 }
 
@@ -167,7 +168,7 @@ class AESCryptor:
             out_log('text =' + str(text), True)
             raise err
         except ValueError as err:
-            out_log(err.args, True)
+            out_log(str(err.args), True)
             out_log('len(text) =' + str(len(text)), True)
             raise err
         try:
@@ -218,21 +219,21 @@ class Network(AESCryptor):
 
 
 class ClientProcess:
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, client_class: 'CBRTCPClient'):
+        self.client = client_class
         self.end = 0
 
-    def message_formatter(self, client, player, msg):
+    def message_formatter(self, client_name, player, msg):
         if player != "":
-            message = f"§7[§{client_color}{client}§7] <{player}> {msg}"  # chat message
+            message = f"§7[§{client_color}{client_name}§7] <{player}> {msg}"  # chat message
         else:
-            message = f"§7[§{client_color}{client}§7] {msg}"
+            message = f"§7[§{client_color}{client_name}§7] {msg}"
         return message
 
-    def msg_json_formatter(self, client, player, msg):
+    def msg_json_formatter(self, client_name, player, msg):
         message = {
             "action": "message",
-            "client": client,
+            "client": client_name,
             "player": player,
             "message": msg
         }
@@ -259,15 +260,15 @@ class ClientProcess:
                 return
         self.end = -1
 
-    def ping_log(self, ping, info=None, server=None):
-        if ping == -2:
+    def ping_log(self, ping_ms, info=None, server=None):
+        if ping_ms == -2:
             print_msg(f'- Offline', 2, info, server=server)
-        elif ping == -1:
+        elif ping_ms == -1:
             print_msg(f'- No response - time = 2000ms', 2, info, server=server)
         else:
-            print_msg(f'- Alive - time = {ping}ms', 2, info, server=server)
+            print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
-    def process_msg(self, msg, socket: soc.socket, address):
+    def process_msg(self, msg, socket: soc.socket):
         if 'action' in msg.keys():
             if msg['action'] == 'result':
                 if msg['result'] == 'login success':
@@ -306,7 +307,7 @@ class CBRTCPClient(Network):
     def __init__(self, config_data):
         super().__init__(config_data['aes_key'])
         self.ip = config_data['host_name']
-        self.port = config_data['port']
+        self.port = config_data['host_port']
         self.name = config_data['name']
         self.password = config_data['password']
         self.server = None
@@ -318,7 +319,7 @@ class CBRTCPClient(Network):
     def setup(self, config_data):
         super().__init__(config_data['aes_key'])
         self.ip = config_data['host_name']
-        self.port = config_data['port']
+        self.port = config_data['host_port']
         self.name = config_data['name']
         self.password = config_data['password']
         self.connected = False
@@ -367,9 +368,9 @@ class CBRTCPClient(Network):
     def reload(self, info=None):
         print_msg("Reload ChatBridgeReforged Client now", 2, info, server=self.server)
         self.close_connection()
-        config = load_config()
+        new_config = load_config()
         time.sleep(0.1)
-        self.setup(config)
+        self.setup(new_config)
         print_msg("Reload Config", 2, info, server=self.server)
         self.try_start(info)
         time.sleep(0.1)
@@ -398,7 +399,7 @@ class CBRTCPClient(Network):
             self.connected = False
             raise er
         msg = json.loads(msg)
-        self.process.process_msg(msg, self.socket, self.ip)
+        self.process.process_msg(msg, self.socket)
 
     def handle_echo(self):
         self.login(self.name, self.password)
@@ -423,40 +424,47 @@ class CBRTCPClient(Network):
         self.connected = False
 
 
+def input_process(message):
+    global debug_mode
+    if message == 'help':
+        for line in str(help_msg).splitlines():
+            out_log(line)
+    elif message == 'stop':
+        client.try_stop()
+    elif message == 'start':
+        client.try_start()
+    elif message == 'status':
+        print_msg(f"CBR status: Online = {client.connected}", 2)
+    elif message == 'ping':
+        ping = client.process.ping_test()
+        client.process.ping_log(ping)
+    elif message == 'reload':
+        client.reload()
+    elif message == 'restart':
+        client.try_stop()
+        time.sleep(0.1)
+        client.try_start()
+    elif message == 'exit':
+        exit(0)
+    elif message == 'forcedebug':
+        debug_mode = not debug_mode
+        out_log(f'Force debug: {debug_mode}')
+    elif message == 'test':
+        for thread in threading.enumerate():
+            print(thread.name)
+    elif client.connected:
+        client.send_msg(client.socket, client.process.msg_json_formatter(config['name'], '', message))
+    else:
+        out_log("Not Connected")
+
+
 if __name__ == '__main__':
     config = load_config()
     client = CBRTCPClient(config)
     client.try_start()
     while True:
-        a = input()
-        if a == 'help':
-            for line in str(help_msg).splitlines():
-                out_log(line)
-        elif a == 'stop':
-            client.try_stop()
-        elif a == 'start':
-            client.try_start()
-        elif a == 'status':
-            print_msg(f"CBR status: Online = {client.connected}", 2)
-        elif a == 'ping':
-            ping = client.process.ping_test()
-            client.process.ping_log(ping)
-        elif a == 'reload':
-            client.reload()
-        elif a == 'restart':
-            client.try_stop()
-            time.sleep(0.1)
-            client.try_start()
-        elif a == 'forcedebug':
-            debug_mode = not debug_mode
-            out_log(f'Force debug: {debug_mode}')
-        elif a == 'test':
-            for thread in threading.enumerate():
-                print(thread.name)
-        elif client.connected:
-            client.send_msg(client.socket, client.process.msg_json_formatter(config['name'], '', a))
-        else:
-            out_log("Not Connected")
+        input_msg = input()
+        input_process(input_msg)
 
 
 @new_thread("CBRProcess")
@@ -485,8 +493,8 @@ def on_info(server: ServerInterface, info: Info):
             time.sleep(0.1)
             print_msg(f"CBR status: Online = {client.connected}", 2, info, server=server)
         elif args[1] == 'ping':
-            ping = client.process.ping_test()
-            client.process.ping_log(ping, info, server=server)
+            ping_ms = client.process.ping_test()
+            client.process.ping_log(ping_ms, info, server=server)
         elif args[1] == 'forcedebug' and server.get_permission_level(info.player) > 2:
             debug_mode = not debug_mode
             print_msg(f'Force debug: {debug_mode}', 2, info, server=server)
@@ -525,7 +533,7 @@ def on_load(server, old):
         except Exception:
             bug_log(error=True)
     server.register_help_message(prefix, "ChatBridgeReforged")
-    config = load_config()
-    client = CBRTCPClient(config)
+    config_dict = load_config()
+    client = CBRTCPClient(config_dict)
     client.try_start()
     client.server = server

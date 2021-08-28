@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-012'
-LIB_VERSION = 'v20210817'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-013'
+LIB_VERSION = 'v20210820'
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
@@ -39,7 +39,7 @@ class ConfigChecker:
         self.logger = logger
 
     def check_all(self):
-        self.logger.info("Checking config ......")
+        self.logger.debug("Checking config ......", "CBR")
         if not path.exists(CONFIG_PATH):
             self.logger.error("Config file is missing, default config generated")
             self.__gen_config()
@@ -69,7 +69,7 @@ class ConfigChecker:
         if not self.__check_node(data, CONFIG_STRUCTURE):
             raise ValueError('Some config is missing in config.yml')
         else:
-            self.logger.info('Finish checking config')
+            self.logger.info('Finish config check')
 
     def __check_node(self, data, structure):
         check_node_result = True

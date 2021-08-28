@@ -38,7 +38,7 @@ class PluginEvent:
         self.logger.debug(f"Start '{self.event}'", module='plugin')
         async with trio.open_nursery() as nursery2:
             for i in self.register_event_plugins:
-                plugin: 'Plugin' = self.register_event_plugins[i]
+                plugin: 'Plugin' = self.register_event_plugins[i]  # TODO permanent plugin
                 run = getattr(plugin.instance, self.event)
                 nursery2.start_soon(self.wait_run, plugin.id, run, server_interface, nursery, wait_time, *args)
         self.logger.debug(f"Finish event '{self.event}'", module='plugin')

@@ -10,3 +10,5 @@ config.yml
 tempCodeRunnerFile.py
 test.py
 test2.py
+ChatBridgeReforged_client_cqhttp2.py
+*.zip

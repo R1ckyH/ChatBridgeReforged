@@ -4,7 +4,7 @@
 - v0.0.1-Beta
 - only tested for python 3.7 and 3.8
 - python version should be 3.6+
-- `pip install trio` to install [trio](https://trio.readthedocs.io/)
+- `pip install -r requirements.txt` to install requirements!
 
 ## Compare to [ChatBridge](https://github.com/TISUnion/ChatBridge)
 

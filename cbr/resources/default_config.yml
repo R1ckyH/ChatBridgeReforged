@@ -21,8 +21,8 @@ server_setting:
 clients:
   - name: 'survival'
     password: 'survival'
-  - name: 'creative'
-    password: 'creative'
+  - name: 'cqhttp'
+    password: 'cqhttp'
 
 
 # The language that CBR will use to display information

@@ -21,7 +21,7 @@ When the server has trigger specific event, CBR will call relevant `Function` of
 | on_player_joined(server, player, info) | A player joined the server | No | Response to player joining with the given info instance |
 | on_player_left(server, player, info) | A player left the server | No | Response to player leaving |
 
-Note: the plugin doesn't need to implement all methods above. Just implement what you need
+Note: the plugin doesn't need to implement all methods above. **Just implement what you need**
 
 Among them, the information of each parameter object is as follows:
 
@@ -31,17 +31,16 @@ Among them, the information of each parameter object is as follows:
 
 This is an object for the plugin to interact with the server. It belongs to the ServerInterface class in `cbr/plugin/server_interface.py`
 
-It has the following constants:
-
 It has the following variables:
 
 | Variable | Type | Usage |
 |---|---|---|
-| logger | CBRLogger(like `logging.Logger`) | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. [docs](https://docs.python.org/3/library/logging.html#logger-objects)
+| logger | modified `CBRLogger` with only `info`, `error`, `warning` and `debug` | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. |
+| cbr_logger | CBRLogger(like `logging.Logger`) | A logger of CBR like [logger](https://docs.python.org/3/library/logging.html#logger-objects)| |
 
-It also has these following methods:
+It also has these following functions:
 
-**Server Control**
+**Server Control TODO in future**
 
 | Function | Usage |
 |---|---|
@@ -55,7 +54,9 @@ It also has these following methods:
 | send_command(command, target) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
 | send_servers_command(command, targets) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
 | send_message(msg, target) | Send `msg` to `target` server |
+| send_custom_message(target, msg, client, player, extra) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
 | tell_message(msg, target, player) | Send `msg` to `player` in `target` server |
+| execute_command(command, target) | Execute `command` in `target` server without waiting result **`TODO`**|
 
 **Other**
 
@@ -63,13 +64,14 @@ It also has these following methods:
 |---|---|
 | get_permission_level(obj) | todo |
 | set_permission_level(player, level) | todo |
-| register_help_message(prefix, message) | Add a help message with prefix `prefix` and message `message` to the `##help` data of CBR. The `##help` data of CBR will be reset before plugin reloading. **It is recommended to add relevant information in `on_load ()` method call.** |
-| is_client_online(client) | Check `client` is online or not |
-| is_mc_client(client) | Check `client` is `mc_client` or not. **`client` will register itself as `mc_client` if need** |
-| is_client_online(client) | Check `client` is online or not |
+| register_help_message(prefix, message) | Add a help message with prefix `prefix` and message `message` to the `##help` data of CBR. The `##help` data of CBR will be reset before plugin reloading **(todo)** . **It is recommended to add relevant information in `on_load ()` method call.** |
+| get_client_type() | get `type` that client register at login. `client` will **register** `type` itself while **login** if need |
+| is_client_online(client) | Check `client` is **online** or not. |
 | get_online_clients() | get list of `online` clients |
+| is_mc_client(client) | Check `client` **register** as `mc` or not. |
 | get_mc_clients() | get list of `mc` clients |
-| get_online_mc_clients() | get list of `online` `mc` clients |
+| is_client_online(client) | Check `client` is **online** or not |
+| get_online_mc_clients() | get list of **online** `mc` clients |
 
 ### info
 
@@ -80,7 +82,9 @@ This is a parsed information object. It belongs to the Info class in `cbr/plugin
 | content | If the info is player's chat message, the value is the player's chat content. Otherwise, the value is a string that server receive from tcp |
 | player | If the info is player's chat message, the value is a string representing the player's name, otherwise `''` |
 | client | A `string` that represent the sender clients |
+| client_type | Ａ`string` that represent the `type` that **register** when `client` **login** | 
 | is_player() | Equivalent to `player != ''` |
+| extra | A place for storing special message that plugin want to store when communicate. It wont effect the message sending. **May delete at future version** |
 | should_send_message() | let the message continues to send other mc server |
 | cancel_send_message() | let the message cancel to send other mc server |
 
@@ -88,7 +92,7 @@ This is a parsed information object. It belongs to the Info class in `cbr/plugin
 
 For the following message from the message's standard output：
 
-`[CBR][09:00:00][MainThread/INFO]: [survival] <TFC> Welcome to TFC`
+`[CBR] [09:00:00] [MainThread/INFO]: [survival] <TFC> Welcome to TFC`
 
 The attributes of the info object are:
 
@@ -97,21 +101,23 @@ The attributes of the info object are:
 | content | `Welcome to TFC` |
 | player | `TFC` |
 | client | `survival` |
-| is_player() | True |
+| client_type | `mc` |
+| is_player() | `True` |
 
 ------
 
 For the following message from the message's standard output：
 
-`[CBR][09:00:00][MainThread/INFO]: [CBR] TFC QQ : 1073626979`
+`[CBR] [09:00:00] [MainThread/INFO]: [CBR] TFC QQ : 1073626979`
 
 The attributes of the info object are:
 
 | Attribute | Value |
 |---|---|
 | content | `TFC QQ : 1073626979` |
-| player | `''`|
+| player | `None`|
 | client | `CBR` |
+| client_type | `` |
 | is_player() | False |
 
 ## Some tips for writing plugin
@@ -127,5 +133,5 @@ The attributes of the info object are:
 find me in MCDR discuss group
 - Please give me a `star` if you like this project
 - If you have some good idea, please share it to me
-- copy and edit form [MCDR](https://github.com/Fallen-Breath/MCDReforged)
+- plugin.md copy and edit form [MCDR](https://github.com/Fallen-Breath/MCDReforged)
 - Thx [Fallen_Breath](https://github.com/Fallen-Breath)
