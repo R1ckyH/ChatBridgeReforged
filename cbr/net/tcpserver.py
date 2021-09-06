@@ -9,7 +9,7 @@ from cbr.lib.logger import CBRLogger
 from cbr.net.encrypt import AESCryptor
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
-from cbr.plugin.serverinterface import ServerInterface
+from cbr.plugin.cbrinterface import CBRInterface
 
 
 class Clients:
@@ -37,7 +37,7 @@ class Network(AESCryptor):
     async def receive_msg(self, stream: trio.SocketStream, address):
         data = await stream.receive_some(4)
         if len(data) < 4:
-            return None
+            return '{}'
         length = struct.unpack('I', data)[0]
         msg = await stream.receive_some(length)
         msg = str(msg, encoding='utf-8')
@@ -72,17 +72,22 @@ class CBRTCPServer(Network):
         self.port = self.config.port
         self.clients = self.setup_client()
         super().__init__(logger, self.config.aes_key, self.clients)
-        self.server_interface = ServerInterface(self)
-        self.plugin_manager = PluginManager(self.server_interface, self.logger)
-        self.process = ServerProcess(self, self.logger)
+        self.plugin_manager = None
+        self.process = None
         self.nursery = None
         self.__register_help_msg = []
+        self.token = None
+        self.server_interface = None
         # TODO: better exception
 
     def start(self):
         trio.run(self.run)
 
     async def run(self):
+        self.token = trio.lowlevel.current_trio_token()
+        self.server_interface = CBRInterface(self, self.token)
+        self.plugin_manager = PluginManager(self.server_interface, self.logger)
+        self.process = ServerProcess(self, self.logger)
         await self.main()
 
     async def start_server(self):
@@ -135,6 +140,7 @@ class CBRTCPServer(Network):
         except Exception:
             self.logger.bug(False, True)
             self.logger.critical("Error in get peer name", "CBR")
+            address = 'ERROR ADDRESS'
         self.logger.debug(f"new session started from {address}", "CBR")
         client_process = ClientProcess(self, self.logger)
         async with trio.open_nursery() as nursery:

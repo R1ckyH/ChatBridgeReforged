@@ -2,19 +2,16 @@
 # similar with MCDR
 
 from cbr.plugin.info import MessageInfo
-from cbr.plugin.serverinterface import ServerInterface
+from cbr.plugin.cbrinterface import CBRInterface
 
-PLUGIN_METADATA = {
+METADATA = {
     'id': 'not_sample_plugin',
     'version': '0.0.1',
     'name': 'not_sample_plugin_xd',
-    'description': '##list.',
+    'description': '##list, it is not a sample plugin',
     'author': 'Ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
-    'dependencies': {
-        'chatbridgereforged': '>=0.0.1'
-    }
-}  # just do it like MCDR
+    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
+}
 
 
 def players_no_bot(player_list):
@@ -34,7 +31,7 @@ def list_player(server, info):
         players = {}
         results = server.send_servers_command('list', online_mc_client)
         if results is None:
-            server.tell_message("No information", info.client, info.player)
+            server.tell_message("No information", info.source_client, info.sender)
             return
         for i in results.keys():
             if results[i] is not None:
@@ -48,10 +45,10 @@ def list_player(server, info):
         message = "- Online players:"
         for i in range(len(online_mc_client)):
             message += f"\n[{online_mc_client[i]}]: {players[online_mc_client[i]]}"
-        server.tell_message(message, info.client, info.player)
+        server.tell_message(message, info.source_client, info.sender)
 
 
-def on_message(server: ServerInterface, info: MessageInfo):
+def on_message(server: CBRInterface, info: MessageInfo):
     list_player(server, info)
 
 
@@ -59,9 +56,5 @@ def on_command(server, info):  # not recommend to do, but you can do it
     list_player(server, info)
 
 
-def on_load(server: ServerInterface):
+def on_load(server: CBRInterface):
     server.register_help_message("##list", "list out the online players in servers")
-
-
-def on_unload(server):
-    pass

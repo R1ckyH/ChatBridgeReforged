@@ -8,7 +8,7 @@ import trio
 
 from cbr.lib.logger import CBRLogger
 from cbr.plugin.plugin_event import PluginEventManager
-from cbr.plugin.serverinterface import ServerInterface
+from cbr.plugin.cbrinterface import CBRInterface
 
 
 class Plugin:
@@ -52,7 +52,7 @@ class Plugin:
 
     def gen_metadata(self):
         try:
-            self.metadata = self.instance.PLUGIN_METADATA
+            self.metadata = self.instance.METADATA
         except AttributeError:
             pass
 
@@ -65,7 +65,7 @@ class Plugin:
 
 
 class PluginManager:
-    def __init__(self, server_interface: ServerInterface, logger: CBRLogger):
+    def __init__(self, server_interface: CBRInterface, logger: CBRLogger):
         self.server_interface = server_interface
         self.logger = logger
         self.event_manager = PluginEventManager(self.logger)

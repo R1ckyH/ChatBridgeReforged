@@ -14,12 +14,12 @@ When the server has trigger specific event, CBR will call relevant `Function` of
 
 | Function | When to call | Available | Reference usage |
 |---|---|---|---|
-| on_load(server) | A plugin gets loaded | YES | The new plugin inherits information from the old plugin |
-| on_unload(server) | A plugin gets unloaded | YES | Clean up or turn off functionality of the old plugin |
-| on_message(server, info) | A message action have been receive in server | YES | Response to the message from the clients |
-| on_command(server, info) | A command action have been receive in server | YES | Response to the command from the server |
-| on_player_joined(server, player, info) | A player joined the server | No | Response to player joining with the given info instance |
-| on_player_left(server, player, info) | A player left the server | No | Response to player leaving |
+| on_load(CBRInterface) | A plugin gets loaded | YES | The new plugin inherits information from the old plugin |
+| on_unload(CBRInterface) | A plugin gets unloaded | YES | Clean up or turn off functionality of the old plugin |
+| on_message(CBRInterface, MessageInfo) | A message action have been receive in server | YES | Response to the message from the clients |
+| on_command(CBRInterface, MessageInfo) | A command action have been receive in server | YES | Response to the command from the server |
+| on_player_joined(CBRInterface, player, MessageInfo) | A player joined the server | No | Response to player joining with the given info instance |
+| on_player_left(CBRInterface, player, MessageInfo) | A player left the server | No | Response to player leaving |
 
 Note: the plugin doesn't need to implement all methods above. **Just implement what you need**
 
@@ -27,9 +27,9 @@ Among them, the information of each parameter object is as follows:
 
 ### server
 
-**Read `cbr/plugin/server_interface.py` to help you understand its functionality**
+**Read `cbr/plugin/cbrinterface.py` to help you understand its functionality**
 
-This is an object for the plugin to interact with the server. It belongs to the ServerInterface class in `cbr/plugin/server_interface.py`
+This is an object for the plugin to interact with the server. It belongs to the ServerInterface class in `cbr/plugin/cbrinterface.py`
 
 It has the following variables:
 
@@ -80,8 +80,8 @@ This is a parsed information object. It belongs to the Info class in `cbr/plugin
 | Attribute | Content |
 |---|---|
 | content | If the info is player's chat message, the value is the player's chat content. Otherwise, the value is a string that server receive from tcp |
-| player | If the info is player's chat message, the value is a string representing the player's name, otherwise `''` |
-| client | A `string` that represent the sender clients |
+| sender | If the info is player's chat message, the value is a string representing the player's name, otherwise `''` |
+| source_client | A `string` that represent the sender clients |
 | client_type | Ａ`string` that represent the `type` that **register** when `client` **login** | 
 | is_player() | Equivalent to `player != ''` |
 | extra | A place for storing special message that plugin want to store when communicate. It wont effect the message sending. **May delete at future version** |
@@ -99,8 +99,8 @@ The attributes of the info object are:
 | Attribute | Value |
 |---|---|
 | content | `Welcome to TFC` |
-| player | `TFC` |
-| client | `survival` |
+| sender | `TFC` |
+| source_client | `survival` |
 | client_type | `mc` |
 | is_player() | `True` |
 
@@ -115,8 +115,8 @@ The attributes of the info object are:
 | Attribute | Value |
 |---|---|
 | content | `TFC QQ : 1073626979` |
-| player | `None`|
-| client | `CBR` |
+| sender | ``|
+| source_client | `CBR` |
 | client_type | `` |
 | is_player() | False |
 

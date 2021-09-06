@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-013'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-014'
 LIB_VERSION = 'v20210820'
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"

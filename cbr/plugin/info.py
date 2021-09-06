@@ -6,9 +6,9 @@ from cbr.lib.logger import CBRLogger
 
 class MessageInfo:
     def __init__(self, client: str, message: str, player: str = None, client_type='', logger: CBRLogger = None, extra: dict = None):
-        self.client = client
+        self.source_client = client
         self.content = message
-        self.player = player
+        self.sender = player
         self._logger = logger
         self.client_type = client_type
         self._send_to_servers = True
@@ -35,7 +35,7 @@ class MessageInfo:
         """
             Check message send by player or not
         """
-        if self.player is not None:
+        if self.sender is not None:
             return True
         else:
             return False

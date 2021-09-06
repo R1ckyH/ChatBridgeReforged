@@ -6,7 +6,7 @@ import trio
 from typing import TYPE_CHECKING
 
 from cbr.lib.logger import CBRLogger
-from cbr.plugin.serverinterface import ServerInterface
+from cbr.plugin.cbrinterface import CBRInterface
 
 if TYPE_CHECKING:
     from cbr.plugin.plugin import Plugin
@@ -34,7 +34,7 @@ class PluginEvent:
             self.register_event_plugins.pop(plugin_id)
             self.logger.debug(f"Plugin '{plugin_id}' removed in event '{self.event}'", "plugin")
 
-    async def plugins_run_event(self, wait_time, nursery, server_interface: ServerInterface, *args):
+    async def plugins_run_event(self, wait_time, nursery, server_interface: CBRInterface, *args):
         self.logger.debug(f"Start '{self.event}'", module='plugin')
         async with trio.open_nursery() as nursery2:
             for i in self.register_event_plugins:
@@ -43,7 +43,7 @@ class PluginEvent:
                 nursery2.start_soon(self.wait_run, plugin.id, run, server_interface, nursery, wait_time, *args)
         self.logger.debug(f"Finish event '{self.event}'", module='plugin')
 
-    async def wait_run(self, plugin_id, run, server_interface: ServerInterface, nursery, wait_time=1, *args):
+    async def wait_run(self, plugin_id, run, server_interface: CBRInterface, nursery, wait_time=1, *args):
         self.logger.debug(f"Start '{self.event}' of {plugin_id}", module='plugin')
         if wait_time == -1:
             cancel_scope = trio.CancelScope()
@@ -54,7 +54,7 @@ class PluginEvent:
             await trio.sleep_forever()
         self.logger.debug(f"Finish '{self.event}' of {plugin_id}", module='plugin')
 
-    def __run(self, run_plugin, cancel_scope: trio.CancelScope, server_interface: ServerInterface, *args):
+    def __run(self, run_plugin, cancel_scope: trio.CancelScope, server_interface: CBRInterface, *args):
         try:
             run_plugin(server_interface, *args)
         except Exception:
@@ -94,7 +94,7 @@ class PluginEventManager:
         for i in self.events:
             self.events[i].remove_plugin(plugin_id)
 
-    async def run_event(self, event, wait_time, nursery, server_interface: ServerInterface, *args):
+    async def run_event(self, event, wait_time, nursery, server_interface: CBRInterface, *args):
         if event not in self.events:
             self.logger.error(f"Event '{event}' haven't been register")
             return

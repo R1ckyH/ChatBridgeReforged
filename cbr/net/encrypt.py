@@ -7,7 +7,9 @@ from cbr.lib.logger import CBRLogger
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor copied from ChatBridge cause me dose not want to change this part
+    By ricky, most of the AESCryptor copied from ChatBridge cause I dose not want to change this part
+
+    [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """
     def __init__(self, key, logger: CBRLogger, mode=AES.MODE_CBC):
         self.key = self.__to16length(key)

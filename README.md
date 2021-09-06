@@ -36,6 +36,9 @@
 | CBR | `bool` | debug mode switch |
 | plugin | `bool` | debug mode switch |
 
+## cqhttp
+[cqhttp document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/cqhttp.md)
+
 ## Plugin
 
 [Plugin document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/plugin.md)

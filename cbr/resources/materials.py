@@ -3,7 +3,7 @@ data pack here
 """
 import sys
 
-# Config # TODO execute_command
+# Config
 # TODO plugin api with mcdr
 '''
 plugin:##CBR
@@ -90,7 +90,25 @@ clientA <- server <- clientB
         "result": "STRING" // if good
     }
 
-may be todo:
+API USE
+clientA -> server -> clientB
+{
+    "action": "api",
+    "sender": "CLIENT_A_NAME",
+    "receiver": "CLIENT_B_NAME",
+    "plugin": "PLUGIN_ID",
+    "function": "FUNCTION_NAME"
+    "keys":
+    [
+        "KEY1", "KEY2", True // only support string and bool
+        // must with order
+    ]
+    "result":
+    {
+        "responded": false
+    }
+}
+clientA <- server <- clientB
     [!!stats]
     "result":
     {

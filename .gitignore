@@ -2,13 +2,16 @@
 
 # Files
 .gitignore
-*.json
 *.log
+*.mcdr
 *.pyc
 .idea/
+config
 config.yml
+rm_pycache.py
+start.py
 tempCodeRunnerFile.py
 test.py
 test2.py
-ChatBridgeReforged_client_cqhttp2.py
+ChatBridgeReforged_cqhttp2.py
 *.zip
