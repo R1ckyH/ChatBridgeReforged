@@ -1,12 +1,11 @@
 import json
 import os
-import struct
 import trio
 
 from functools import partial
 
 from cbr.lib.logger import CBRLogger
-from cbr.net.encrypt import AESCryptor
+from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
 from cbr.plugin.cbrinterface import CBRInterface
@@ -26,41 +25,6 @@ class Clients:
         self.cmd_result = None
         self.process = None
         self.lib_version = None
-
-
-class Network(AESCryptor):
-    def __init__(self, logger: CBRLogger, key, clients):
-        super().__init__(key, logger)
-        self.logger = logger
-        self.clients = clients
-
-    async def receive_msg(self, stream: trio.SocketStream, address):
-        data = await stream.receive_some(4)
-        if len(data) < 4:
-            return '{}'
-        length = struct.unpack('I', data)[0]
-        msg = await stream.receive_some(length)
-        msg = str(msg, encoding='utf-8')
-        try:
-            msg = self.decrypt(msg)
-        except Exception:
-            self.logger.bug(exit_now=False)
-            return '{}'
-        self.logger.debug(f"Received {msg!r} from {address!r}", "CBR")
-        return msg
-
-    async def send_msg(self, stream: trio.SocketStream, msg, target=''):
-        if target == '':
-            lock = trio.Lock()
-        else:
-            lock = self.clients[target].send_lock
-            target = 'to ' + target
-        self.logger.debug(f"Send: {msg!r} {target}", "CBR")
-        msg = self.encrypt(msg)
-        msg = bytes(msg, encoding='utf-8')
-        msg = struct.pack('I', len(msg)) + msg
-        async with lock:
-            await stream.send_all(msg)
 
 
 class CBRTCPServer(Network):
@@ -139,7 +103,7 @@ class CBRTCPServer(Network):
             address = stream.socket.getpeername()
         except Exception:
             self.logger.bug(False, True)
-            self.logger.critical("Error in get peer name", "CBR")
+            self.logger.critical("Error in get peer name")
             address = 'ERROR ADDRESS'
         self.logger.debug(f"new session started from {address}", "CBR")
         client_process = ClientProcess(self, self.logger)
@@ -174,7 +138,14 @@ class CBRTCPServer(Network):
 
     async def server_process(self, stream: trio.SocketStream, client_process: ClientProcess, address, nursery):
         msg = await self.receive_msg(stream, address)
-        msg = json.loads(msg)
+        try:
+            msg = json.loads(msg)
+        except Exception:
+            await self.send_stop(stream)
+            self.logger.info(f"Failed decode message from {address}")
+            self.logger.bug(exit_now=False)
+            await stream.aclose()
+            return
         await client_process.process_msg(msg, stream, address, nursery)
 
     def input_process(self):
@@ -198,4 +169,5 @@ class CBRTCPServer(Network):
         for i in range(len(self.__register_help_msg)):
             if self.__register_help_msg[i]['prefix'] == prefix:
                 self.__register_help_msg.pop(i)
+                break
         self.__register_help_msg.append({'prefix': prefix, 'command': msg})

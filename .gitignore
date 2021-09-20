@@ -3,6 +3,7 @@
 # Files
 .gitignore
 *.log
+*.zip
 *.mcdr
 *.pyc
 .idea/
@@ -14,4 +15,3 @@ tempCodeRunnerFile.py
 test.py
 test2.py
 ChatBridgeReforged_cqhttp2.py
-*.zip

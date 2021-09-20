@@ -11,11 +11,10 @@ from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
 
-from mcdreforged.api.all import *
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-LIB_VERSION = "v20210820"
+LIB_VERSION = "v20210915"
 CLIENT_TYPE = "cqhttp"
 client: 'CBRTCPClient'
 CQ_bot: 'CQClient'
@@ -28,7 +27,7 @@ timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_cqhttp',
-    'version': '0.0.1-Beta-014',
+    'version': '0.0.1-Beta-015',
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
@@ -48,15 +47,9 @@ DEFAULT_CONFIG = {
 }
 
 
-def rtext_cmd(txt, msg, cmd):
-    return RText(txt).h(msg).c(RAction.run_command, cmd)
-
-
 def help_formatter(mcdr_prefix, command, first_msg, click_msg, use_command=None):
-    if use_command is None:
-        use_command = command
     msg = f'{mcdr_prefix} {command} {first_msg}'
-    return rtext_cmd(msg, f'Click me to {click_msg}', f'{mcdr_prefix} {use_command}')
+    return msg
 
 
 def message_formatter(client_name, player, msg):
@@ -135,7 +128,7 @@ class CBRLogger:
         if not not_spam:
             print(msg + '\n', end='')
             if self.log_path != '':
-                with open(LOG_PATH, 'a+', encoding='utf-8') as log:
+                with open(self.log_path, 'a+', encoding='utf-8') as log:
                     log.write(msg + '\n')
 
     def bug_log(self, error=False):
@@ -220,7 +213,7 @@ class Config:
 
 class CQClient(websocket.WebSocketApp):
     def __init__(self, config: Config, logger: CBRLogger, client_class: 'CBRTCPClient'):
-        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close)
+        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close, on_open=self.on_open)
         self.client = client_class
         self.logger = logger
         self.config = config
@@ -228,13 +221,19 @@ class CQClient(websocket.WebSocketApp):
     def start(self):
         while True:
             self.run_forever()
+            for i in range(5, 1, -1):
+                self.logger.error(f"Connection failed, reconnect after {i} second")
+                time.sleep(1)
 
     def on_message(self, client_class, message):
         if not self.client.connected:
             return
         data = json.loads(message)
         if 'status' in data:
-            self.logger.debug('CQBot return status {}'.format(data['status']))
+            if 'msg' in data and data['msg'] == 'SEND_MSG_API_ERROR':
+                self.logger.error('CQBot error on sending message')
+            else:
+                self.logger.debug('CQBot return status {}'.format(data['status']))
         elif data['post_type'] == 'message' and data['message_type'] == 'group':
             if str(data['group_id']) == self.config.react_group and data['anonymous'] is None:
                 msg = msg_json_formatter(self.client.name, data['sender']['nickname'], data['raw_message'])
@@ -245,6 +244,9 @@ class CQClient(websocket.WebSocketApp):
     def on_error(self, client_class, error2=None):
         self.logger.error(str(error2))
         self.logger.bug_log()
+
+    def on_open(self, client_class):
+        self.logger.info(f"Connected to qq")
 
     def on_close(self, client_class, close_code, close_msg):
         self.logger.info(f"Close connection with code : {close_code}")
@@ -364,11 +366,11 @@ class ClientProcess:
             self.client.try_stop()
             time.sleep(0.1)
             self.client.try_start()
-            self.client.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2)
+            self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2)
         elif message == 'exit':
             exit(0)
         elif message == 'forcedebug':
-            self.client.logger.force_debug()
+            self.logger.force_debug()
         elif message == 'test':
             for thread in threading.enumerate():
                 print(thread.name)
@@ -390,6 +392,9 @@ class ClientProcess:
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
+                if msg['message'] is None:
+                    self.logger.info(str(msg['message']))
+                    return
                 for i in msg['message'].splitlines():
                     message = message_formatter(msg['client'], msg['player'], i)
                     self.logger.print_msg(message, 0)
@@ -398,6 +403,10 @@ class ClientProcess:
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
+        else:
+            self.logger.error(f"Receive Unresolved message from server")
+            self.logger.info(f"Close Connection to server")
+            self.client.close_connection("Server")
 
 
 class Network(AESCryptor):
@@ -408,13 +417,15 @@ class Network(AESCryptor):
     def receive_msg(self, socket: soc.socket, address):
         data = socket.recv(4)
         if len(data) < 4:
+            self.logger.error("Data length error")
             return '{}'
         length = struct.unpack('I', data)[0]
         msg = socket.recv(length)
-        msg = str(msg, encoding='utf-8')
         try:
+            msg = str(msg, encoding='utf-8')
             msg = self.decrypt(msg)
         except Exception:
+            self.logger.bug_log(error=True)
             return '{}'
         self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg
@@ -445,8 +456,6 @@ class CBRTCPClient(Network):
         self.connected = False
         self.cancelled = False
         self.connecting = False
-        self.ip = config.host_name
-        self.port = config.host_port
         self.name = config.name
         self.password = config.password
         super().__init__(config.aes_key, self)
@@ -454,10 +463,8 @@ class CBRTCPClient(Network):
 
     def setup(self, new_config: Config):
         self.config.init_all_config()
-        self.logger.load(new_config)
+        self.logger.load(self)
         super().__init__(new_config.aes_key, self)
-        self.ip = new_config.host_name
-        self.port = new_config.host_port
         self.name = new_config.name
         self.password = new_config.password
         self.connected = False
@@ -474,18 +481,19 @@ class CBRTCPClient(Network):
     def start(self):
         self.cancelled = False
         self.logger.print_msg(f"Connecting to server with client {self.name}", 2)
-        self.logger.info(f'Open connection to {self.ip}:{self.port}')
+        self.logger.info(f'Open connection to {self.config.host_name}:{self.config.host_port}')
         self.logger.info(f'version : {PLUGIN_METADATA["version"]}, lib version : {LIB_VERSION}')
         self.socket = soc.socket()
         try:
-            self.socket.connect((self.ip, self.port))
+            self.socket.connect((self.config.host_name, self.config.host_port))
         except Exception:
             self.logger.bug_log(error=True)
             self.connected = False
+            self.connecting = False
             return
         self.connected = True
-        self.socket.settimeout(timeout)
         self.connecting = False
+        self.socket.settimeout(timeout)
         self.handle_echo()
 
     def try_stop(self):
@@ -494,6 +502,8 @@ class CBRTCPClient(Network):
             self.logger.print_msg("Closed connection", 2)
         else:
             self.logger.print_msg("Connection already closed", 2)
+            self.connected = False
+            self.connecting = False
 
     def close_connection(self, target=''):
         if self.socket is not None and self.connected:
@@ -503,6 +513,7 @@ class CBRTCPClient(Network):
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")
         self.connected = False
+        self.connecting = False
 
     def reload(self):
         self.logger.print_msg("Reload ChatBridgeReforged Client now", 2)
@@ -533,7 +544,7 @@ class CBRTCPClient(Network):
 
     def client_process(self):
         try:
-            msg = self.receive_msg(self.socket, self.ip)
+            msg = self.receive_msg(self.socket, self.config.host_name)
         except OSError as er:
             self.logger.debug("Stop Receive message")
             self.connected = False
@@ -576,6 +587,7 @@ def main():
     config = Config(logger)
     config.init_all_config()
     client = CBRTCPClient(config, logger)
+    logger.load(client)
     client.try_start()
     logger.info("Starting CQ services")
     CQ_bot = CQClient(config, logger, client)

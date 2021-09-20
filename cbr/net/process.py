@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from cbr.lib.logger import CBRLogger
 from cbr.plugin.info import MessageInfo
+from cbr.resources import formatter
 
 if TYPE_CHECKING:
     from cbr.net.tcpserver import CBRTCPServer
@@ -28,29 +29,26 @@ class Process:
         self.server = tcp_server
         self.logger = logger
         self.plugin_manager = self.server.plugin_manager
-
-    def message_formatter(self, client, player, msg):
-        if player != "":
-            message = f"[{client}] <{player}> {msg}"  # chat message
-        else:
-            message = f"[{client}] {msg}"
-        return message
+        self.formatter = formatter
 
     async def close_connection(self, stream: trio.SocketStream, target):
-        if target != '':
+        if target != '' and self.server.clients[target].online:
             self.server.clients[target].online = False
-            await self.server.send_msg(stream, json.dumps({'action': 'stop'}), target)
+            await self.server.send_stop(stream, target)
             process = self.server.clients[target].process
             process.cancelled = True
             if process.cancel_scope is not None:
                 process.cancel_scope.cancel()
-        await stream.aclose()
+        elif target != '':
+            self.logger.warning(f"{target} is already close")
+        if stream is not None:
+            await stream.aclose()
 
     async def msg_mc_server(self, msg, client_except=''):
         for i in self.server.clients.keys():
             if client_except != i and self.server.clients[i].online and self.server.clients[i].type == 'mc':
                 stream = self.server.clients[i].stream
-                await self.server.send_msg(stream, str(json.dumps(msg)), i)
+                await self.server.send_msg(stream, str(msg), i)
 
     async def ping_test(self, target):
         client = self.server.clients[target]
@@ -60,7 +58,7 @@ class Process:
         client.process.ping_end = -1
         with trio.move_on_after(2) as client.ping_lock:
             start_time = time.time()
-            await self.server.send_msg(client.stream, '{"action": "keepAlive", "type": "ping"}', target)
+            await self.server.send_ping(client.stream, target=target)
             await trio.sleep(2)
         if client.process.ping_end == -1:
             self.logger.debug(f'No response from {target}', "CBR")
@@ -78,7 +76,7 @@ class Process:
             self.logger.info(f'- {target}: Alive - time = {ping}ms')
 
     async def message_process(self, client, player, msg, current_client, event='on_message', raw_msg: dict = None):
-        message = self.message_formatter(client, player, msg)
+        message = self.formatter.info_formatter(client, player, msg)
         if raw_msg is not None and 'extra' in raw_msg.keys():
             extra = raw_msg['extra']
         else:
@@ -92,24 +90,13 @@ class Process:
             await self.plugin_manager.run_event(event, info, nursery=nursery)
             if event == 'on_message':
                 if info.is_send_message():
-                    await self.msg_mc_server(self.msg_formatter(client, player, msg), current_client)
+                    await self.msg_mc_server(self.formatter.message_formatter(client, player, msg), current_client)
                     self.logger.info(message)
             else:
                 if info.is_send_message():
                     return False
                 else:
                     return True
-
-    def msg_formatter(self, client, player, msg, receiver='', extra: dict = None):
-        message = {
-            "action": "message",
-            "client": client,
-            "player": player,
-            "message": msg,
-            "receiver": receiver,
-            "extra": extra
-           }
-        return message
 
 
 class ServerProcess(Process):
@@ -136,19 +123,6 @@ class ServerProcess(Process):
     def help_msg(self):
         for i in help_msg.splitlines():
             self.logger.info(i)
-
-    async def send_cmd(self, cmd, target):
-        msg = {
-            "action": "command",
-            "sender": "CBR",
-            "receiver": target,
-            "command": cmd,
-            "result":
-                {
-                    "responded": False
-                }
-        }
-        await self.server.send_msg(self.server.clients[target].stream, json.dumps(msg), target)
 
     async def msg_process(self, msg: str, nursery: trio.Nursery):
         args = msg.split(' ')
@@ -206,7 +180,7 @@ class ServerProcess(Process):
                 target = args[1]
                 if self.server.clients[target].online:
                     cmd = msg.replace('cmd ' + args[1] + ' ', '')
-                    await self.send_cmd(cmd, target=args[1])
+                    await self.server.send_command(self.server.clients[args[1]].stream, cmd, receiver=args[1], target=args[1])
                 else:
                     self.logger.error("Client not online")
             else:
@@ -291,16 +265,15 @@ class ClientProcess(Process):
                 if self.login(msg['name'], msg['password'], self.server.config.clients):
                     self.current_client = msg['name']
                     await self.add_new_client(stream, msg['name'], lib_version, client_type)
-                    await self.server.send_msg(stream, '{"action": "result","result": "login success"}',
-                                               self.current_client)
+                    await self.server.send_login_result(stream, target=self.current_client)
                     self.server.register_process(self, self.current_client)
                 else:
-                    await self.server.send_msg(stream, '{"action": "result","result": "login fail"}')
+                    await self.server.send_login_result(stream, False)
                     await stream.aclose()
                     self.logger.debug(f'connection from {address} closed now', "CBR")
             elif msg['action'] == 'keepAlive':
                 if msg['type'] == 'ping':
-                    await self.server.send_msg(stream, '{"action": "keepAlive", "type": "pong"}', self.current_client)
+                    await self.server.send_ping(stream, True, self.current_client)
                 elif msg['type'] == 'pong':
                     self.ping_end = time.time()
                     self.server.clients[self.current_client].ping_lock.cancel()
@@ -308,8 +281,7 @@ class ClientProcess(Process):
                 nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'],
                                    self.current_client, 'on_message', msg)
                 if msg['message'] == '##help':
-                    msg = self.msg_formatter("CBR", '', self.server.get_register_help_msg(), msg['player'])
-                    await self.server.send_msg(stream, json.dumps(msg))
+                    await self.server.send_message(stream, "CBR", '', self.server.get_register_help_msg(), msg['player'])
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
@@ -345,6 +317,46 @@ class ClientProcess(Process):
                         self.logger.info(f'Send Command {command} to {receiver}')
                     else:
                         self.logger.error(f'Client {receiver} not found')
+            elif msg['action'] == 'api':
+                sender = msg['sender']
+                receiver = msg['receiver']
+                plugin = msg['plugin']
+                function = msg['function']
+                if msg['result']['responded']:
+                    if sender == 'CBR':
+                        if 'type' not in msg['result'].keys():
+                            self.logger.warning(
+                                f"Unknown result of using api of {plugin} to {receiver} , maybe you should update the version of CBR client")
+                            self.server.clients[self.current_client].cmd_result = None
+                        elif msg['result']['type'] == 0:
+                            self.server.clients[self.current_client].cmd_result = msg['result']['result']
+                            self.logger.debug(
+                                f"Result of Command to {receiver} finished, result: {msg['result']['result']}", "CBR")
+                        elif msg['result']['type'] == 1:
+                            self.server.clients[self.current_client].cmd_result = None
+                            self.logger.warning(f"Plugin {plugin} not find")
+                        elif msg['result']['type'] == 2:
+                            self.server.clients[self.current_client].cmd_result = None
+                            self.logger.warning(f"Function {function} dose not exist in {plugin}")
+                        elif msg['result']['type'] == 3:
+                            self.server.clients[self.current_client].cmd_result = None
+                            self.logger.warning(f"Other error exist")
+                        self.server.clients[self.current_client].cmd_lock.cancel()
+                    elif self.server.clients[sender].online:
+                        await self.server.send_msg(self.server.clients[sender].stream, json.dumps(msg), sender)
+                        self.logger.info(f'Result of api use of {plugin} send to {sender}')
+                    else:
+                        self.logger.error(f'Client {sender} is Closed')
+                else:
+                    if self.server.clients[receiver].online:
+                        await self.server.send_msg(self.server.clients[receiver].stream, json.dumps(msg), receiver)
+                        self.logger.info(f'Result of api use of {plugin} send to {sender}')
+                    else:
+                        self.logger.error(f'Client {receiver} not found')
         elif self.current_client == '':
-            self.logger.warning(f"Undefined connection from {stream.socket.getpeername()}")
+            self.logger.warning(f"Undefined connection from {address}")
             self.cancelled = True
+        else:
+            self.logger.error(f"Receive Unresolved message, '{msg}' from {address} of client '{self.current_client}'")
+            self.logger.info(f"Close Connection to {self.current_client}")
+            await self.close_connection(stream, self.current_client)

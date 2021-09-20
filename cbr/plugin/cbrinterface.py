@@ -1,10 +1,11 @@
 """
 CBR ServerInterface
 """
-import json
 import trio
 
 from typing import TYPE_CHECKING
+
+from cbr.resources import formatter
 
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
@@ -36,6 +37,7 @@ class CBRInterface:
     def __init__(self, server: 'CBRTCPServer', token: trio.lowlevel.TrioToken):
         self._server = server
         self.__token = token
+        self.__formatter = formatter
         self.cbr_logger: 'CBRLogger' = server.logger
         self.logger = ServerInterfaceLogger(self.cbr_logger, token)
         self._server_running = True
@@ -45,13 +47,16 @@ class CBRInterface:
         """
             Check clients online or not
         """
-        return self._server.clients[client].online
+        if self.__exist(client):
+            return self._server.clients[client].online
+        else:
+            return False
 
     def is_mc_client(self, client):
         """
             Check clients register for type `mc` or not
         """
-        if self._server.clients[client].type == 'mc':
+        if self.__exist(client) and self._server.clients[client].type == 'mc':
             return True
         else:
             return False
@@ -95,18 +100,20 @@ class CBRInterface:
 
     def tell_message(self, msg, target, receiver=''):
         """
-            send message to player in target client
+            send message to receiver in target client
+
+            may not useful in some specific client type
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send message")
+        if not self.__running():
+            self.logger.error("Server closed, not allow to send anything")
             return
         if target == "CBR":
             for i in msg.splitlines():
                 self.logger.info('- ' + i)
             return
-        if target in self._server.clients and self._server.clients[target].online:
-            message = json.dumps(self._server.process.msg_formatter("CBR", "", msg, receiver))
-            trio.from_thread.run(self._server.send_msg, self._server.clients[target].stream, message, target, trio_token=self.__token)
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, receiver, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
             # TODO: raise Error
@@ -115,72 +122,131 @@ class CBRInterface:
         """
             send message to target client
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send message")
+        if not self.__running():
+            self.logger.error("Server closed, not allow to send anything")
             return
         if target == "CBR":
             for i in msg.splitlines():
                 self.logger.info('- ' + i)
             return
-        if target in self._server.clients and self._server.clients[target].online:
-            message = json.dumps(self._server.process.msg_formatter("CBR", "", msg))
-            trio.from_thread.run(self._server.send_msg, self._server.clients[target].stream, message, target, trio_token=self.__token)
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, "", target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def send_custom_message(self, target, msg, client, player='', extra: dict = None):
+    def send_custom_message(self, target, msg, client, player=''):
         """
             send message to target client with extra custom information
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send message")
+        if not self.__running():
             return
         if target == "CBR":
             for i in msg.splitlines():
                 self.logger.info('- ' + i)
             return
-        if target in self._server.clients and self._server.clients[target].online:
-            message = json.dumps(self._server.process.msg_formatter(client, player, msg, extra=extra))
-            trio.from_thread.run(self._server.send_msg, self._server.clients[target].stream, message, target, trio_token=self.__token)
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_message, stream, client, player, msg, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def send_command(self, cmd, target) -> str:
+    def execute_command(self, command, target):
         """
-            return None if timeout
+            execute command in a cbr client without return
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send msg")
-            return ''
-        return trio.from_thread.run(self.__wait_cmd_result, target, cmd, trio_token=self.__token)
+        if not self.__running():
+            return None
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_command, stream, command, target, target, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
 
-    def send_servers_command(self, cmd, targets) -> dict:
+    def execute_mcdr_command(self, command, target):
         """
+            execute mcdr command in a cbr client without return
+        """
+        if not self.__running():
+            return
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_command, stream, command, target, target, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
+
+    def command_query(self, command, target):
+        """
+            execute command in a cbr client with return
+
+            return None if timeout or Error
+        """
+        if not self.__running():
+            return None
+        if self.__exist(target) and self.is_client_online(target):
+            return trio.from_thread.run(self.__wait_cmd_result, target, command, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
+            return None
+
+    def servers_command_query(self, command, targets):
+        """
+            query for get the result of multi servers
+
+            use this function instead of command_query to have a better performance if sending same command to multi cbr clients
+
             targets is list of server to send
 
             targets can't be string
 
             return None in dict if cant get result
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send msg")
-            return {}
-        return trio.from_thread.run(self.__wait_servers_cmd_result, targets, cmd, trio_token=self.__token)
+        if not self.__running():
+            return None
+        return trio.from_thread.run(self.__wait_servers_cmd_result, targets, command, trio_token=self.__token)
 
-    def execute_command(self, command, target):
+    def api_query(self, target, plugin_id, function_name, keys: list):
         """
-            execute command in a client server without return
+            query for get the result of api in mcdr plugin
+
+            is is ok to have function name with plugin package in mcdr 2.0 which like `abc.xyz`
+
+            key is a list that store string, dict or bool
         """
-        if self._server_running is False:
-            self.logger.error("Server closed, not allow to send msg")
-            return {}
-        return trio.from_thread.run(self._server.process.send_cmd(command, target), trio_token=self.__token)
+        pass
+        if not self.__running():
+            return None
+        if self.__exist(target) and self.is_client_online(target):
+            return trio.from_thread.run(self.__wait_api_result, target, plugin_id, function_name, keys, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
+            return None
 
     def register_help_message(self, prefix, msg):
         """
             register help message for command `##help`
         """
         self._server.add_register_help_msg(prefix, msg)
+
+    def __running(self):
+        if self._server_running is False:
+            self.logger.error("Server closed, not allow to send anything")
+            return False
+        return True
+
+    def __exist(self, target):
+        if target in self._server.clients:
+            return True
+        else:
+            return False
+
+    async def __wait_api_result(self, target, plugin_id, function_name, keys):
+        with trio.move_on_after(2) as self._server.clients[target].cmd_lock:
+            self._server.clients[target].cmd_result = None
+            stream = self._server.clients[target].stream
+            await self._server.send_api(stream, target, plugin_id, function_name, keys, target)
+            await trio.sleep(2)
+        return self._server.clients[target].cmd_result
 
     async def __wait_servers_cmd_result(self, targets, cmd):
         self.__result_cache = {}
@@ -195,8 +261,12 @@ class CBRInterface:
         self.__result_cache.update({target: await self.__wait_cmd_result(target, cmd)})
 
     async def __wait_cmd_result(self, target, cmd):
-        with trio.move_on_after(2) as self._server.clients[target].cmd_lock:
-            self._server.clients[target].cmd_result = None
-            await self._server.process.send_cmd(cmd, target)
-            await trio.sleep(2)
-        return self._server.clients[target].cmd_result
+        if self.__exist(target):
+            with trio.move_on_after(2) as self._server.clients[target].cmd_lock:
+                self._server.clients[target].cmd_result = None
+                await self._server.send_command(self._server.clients[target].stream, cmd, target, target)
+                await trio.sleep(2)
+            return self._server.clients[target].cmd_result
+        else:
+            self.logger.error(f"client {target} not found or not connected")
+            return None

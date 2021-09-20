@@ -1,6 +1,7 @@
 """
 CBR config file stuffs
 """
+import os
 import shutil
 
 from os import path
@@ -11,8 +12,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-014'
-LIB_VERSION = 'v20210820'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-015'
+LIB_VERSION = "v20210915"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE = [
@@ -39,13 +40,17 @@ class ConfigChecker:
         self.logger = logger
 
     def check_all(self):
-        self.logger.debug("Checking config ......", "CBR")
+        self.logger.info("Checking config ......")
+        if not path.exists('config'):
+            os.mkdir('config')
+        if not path.exists('plugins'):
+            os.mkdir('plugins')
         if not path.exists(CONFIG_PATH):
             self.logger.error("Config file is missing, default config generated")
             self.__gen_config()
         else:
-            with open(CONFIG_PATH, 'r') as f:
-                data = yaml.safe_load(f)
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
+                data = yaml.safe_load(config)
             try:
                 self.logger.debug_config = data['debug']
                 self.logger.debug_all = self.logger.debug_config['all']
@@ -61,6 +66,7 @@ class ConfigChecker:
         else:
             shutil.copyfile(DEFAULT_CONFIG_PATH, CONFIG_PATH)
             self.logger.info("Default config is used now")
+            self.logger.info("Please configure the config and restart again")
             self.logger.info("Exit now")
             exit(0)  # exit here
 

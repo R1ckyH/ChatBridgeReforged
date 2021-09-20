@@ -1,10 +1,12 @@
 """
 data pack here
+Credit: Fallen-Breath https://github.com/Fallen-Breath https://github.com/TISUnion/ChatBridge
 """
 import sys
 
 # Config
-# TODO plugin api with mcdr
+# TODO: split mcdr and mc command
+# TODO: Rtext
 '''
 plugin:##CBR
 数据包格式：
@@ -34,9 +36,6 @@ json格式：
     "player": "PLAYER_NAME",
     "receiver": "PLAYER_NAME",
     "message": "MESSAGE_STRING"
-    "extra": {
-        "custom": "custom"
-    }
 }
 
 结束连接： client <-> server
@@ -81,8 +80,8 @@ clientA <- server <- clientB
         ...
     }
 }
-    [glist] //example
-    "command": "glist"
+    [list] //example
+    "command": "list"
     "result":
     {
         "responded": xxx,
@@ -109,14 +108,23 @@ clientA -> server -> clientB
     }
 }
 clientA <- server <- clientB
-    [!!stats]
-    "result":
+{
+    "action": "api",
+    "sender": "CLIENT_A_NAME",
+    "receiver": "CLIENT_B_NAME",
+    "plugin": "PLUGIN_ID",
+    "function": "FUNCTION_NAME"
+    "key":
+    [
+        ...
+    ]
+    "result": 
     {
-        "responded": xxx,
-        "type": int,  // 0: good, 1: stats not found, 2: stats helper not found
-        "stats_name": "aaa.bbb", // if good
+        "responded": true,
+        "type": int,  // 0: good, 1: plugin not found, 2: api not found 3: other error
         "result": "STRING" // if good
     }
+}
 '''
 
 if __name__ == '__main__':

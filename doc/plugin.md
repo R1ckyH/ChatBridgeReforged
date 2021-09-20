@@ -44,19 +44,20 @@ It also has these following functions:
 
 | Function | Usage |
 |---|---|
-| stop() | Stop CBR server and exit |
 | get_server_pid() | Return the pid of the server process. Notes the process with this pid is a bash process, which is the parent process of real server process you might be interested in |
 
 **Text Interaction**
 
 | Function | Usage |
 |---|---|
-| send_command(command, target) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
-| send_servers_command(command, targets) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
 | send_message(msg, target) | Send `msg` to `target` server |
-| send_custom_message(target, msg, client, player, extra) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
 | tell_message(msg, target, player) | Send `msg` to `player` in `target` server |
-| execute_command(command, target) | Execute `command` in `target` server without waiting result **`TODO`**|
+| send_custom_message(target, msg, client, player) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
+| execute_command(command, targets) | Execute `command` in `target` server without waiting result |
+| execute_mcdr_command(command, targets) | Execute `mcdr` `command` in `target` server without waiting result **only work with command that starts with `!!` now** |
+| command_query | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
+| servers_command_query(command, targets) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
+| api_query(target, plugin_id, function_name, keys) | query for get the result of api in mcdr plugin, function name can include package name, keys is a list which store non object value. Will wait at most 2 second for result, return `result`(str/bool/list/dict) if success, else return `None`  |
 
 **Other**
 

@@ -1,4 +1,5 @@
 import json
+import os
 
 from cbr.plugin.info import MessageInfo
 from cbr.plugin.cbrinterface import CBRInterface
@@ -10,7 +11,12 @@ METADATA = {
     'description': 'communicate with cqhttp',
     'author': 'Ricky',
     'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
-}  # just do it like MCDR
+}
+
+DEFAULT_CONFIG = {
+    'full_msg_group_client': 'cqhttp1',
+    'less_msg_group_client': 'cqhttp'
+}
 
 full_msg_group_client = ''
 less_msg_group_client = ''
@@ -66,8 +72,12 @@ def on_command(server: CBRInterface, info: MessageInfo):
 
 def on_load(server: CBRInterface):
     global full_msg_group_client, less_msg_group_client
-    server.register_help_message("##list", "list out the online players in servers")
-    with open(config_path, 'r', encoding='utf-8') as config:
-        data = json.load(config)
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as config:
+            data = json.load(config)
+    else:
+        with open(config_path, 'w', encoding='utf-8') as config:
+            json.dump(DEFAULT_CONFIG, config, indent=4)
+        data = DEFAULT_CONFIG
     full_msg_group_client = data['full_msg_group_client']
     less_msg_group_client = data['less_msg_group_client']
