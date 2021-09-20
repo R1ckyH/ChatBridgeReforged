@@ -58,11 +58,12 @@ class CBRLogger:
 
     def print_msg(self, msg, num, info=None, server: ServerInterface = None, player='', error=False, debug=False, not_spam=False):
         if num == 0:
-            if server is not None and self.client.server is not None:
-                if player == '':
-                    server.say(msg)
-                else:
-                    server.tell(player, msg)
+            if self.client.server is not None:
+                if server is not None:
+                    if player == '':
+                        server.say(msg)
+                    else:
+                        server.tell(player, msg)
             else:
                 not_spam = False
             self.out_log(str(msg), not_spam=not_spam)

@@ -1,12 +1,11 @@
 import json
 import os
-import struct
 import trio
 
 from functools import partial
 
 from cbr.lib.logger import CBRLogger
-from cbr.net.encrypt import AESCryptor
+from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
 from cbr.plugin.cbrinterface import CBRInterface
@@ -26,41 +25,6 @@ class Clients:
         self.cmd_result = None
         self.process = None
         self.lib_version = None
-
-
-class Network(AESCryptor):
-    def __init__(self, logger: CBRLogger, key, clients):
-        super().__init__(key, logger)
-        self.logger = logger
-        self.clients = clients
-
-    async def receive_msg(self, stream: trio.SocketStream, address):
-        data = await stream.receive_some(4)
-        if len(data) < 4:
-            return '{}'
-        length = struct.unpack('I', data)[0]
-        msg = await stream.receive_some(length)
-        msg = str(msg, encoding='utf-8')
-        try:
-            msg = self.decrypt(msg)
-        except Exception:
-            self.logger.bug(exit_now=False)
-            return '{}'
-        self.logger.debug(f"Received {msg!r} from {address!r}", "CBR")
-        return msg
-
-    async def send_msg(self, stream: trio.SocketStream, msg, target=''):
-        if target == '':
-            lock = trio.Lock()
-        else:
-            lock = self.clients[target].send_lock
-            target = 'to ' + target
-        self.logger.debug(f"Send: {msg!r} {target}", "CBR")
-        msg = self.encrypt(msg)
-        msg = bytes(msg, encoding='utf-8')
-        msg = struct.pack('I', len(msg)) + msg
-        async with lock:
-            await stream.send_all(msg)
 
 
 class CBRTCPServer(Network):

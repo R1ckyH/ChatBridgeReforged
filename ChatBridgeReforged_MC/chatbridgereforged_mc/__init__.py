@@ -1,4 +1,3 @@
-import threading
 import time
 
 from chatbridgereforged_mc.lib.config import Config
@@ -49,7 +48,10 @@ def main(server=None):
     if server is None:
         while True:
             input_message = input()
-            client.process.input_process(input_message)
+            try:
+                client.process.input_process(input_message)
+            except Exception:
+                client.logger.bug_log()
 
 
 def on_load(server: PluginServerInterface, old):

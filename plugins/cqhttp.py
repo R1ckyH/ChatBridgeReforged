@@ -10,7 +10,7 @@ METADATA = {
     'description': 'communicate with cqhttp',
     'author': 'Ricky',
     'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
-}  # just do it like MCDR
+}
 
 full_msg_group_client = ''
 less_msg_group_client = ''

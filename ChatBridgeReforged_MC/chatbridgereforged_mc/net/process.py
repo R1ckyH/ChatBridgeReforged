@@ -71,11 +71,12 @@ class ClientProcess:
             self.client.try_stop()
             time.sleep(0.1)
             self.client.try_start()
+            self.client.logger.print_msg(f"CBR status: Online = {client.connected}", 2, info, server=server)
         elif message == 'exit':
             exit(0)
         elif message == 'forcedebug':
             if info is None or not info.is_player or server.get_permission_level(info.player) > 2:
-                self.client.logger.force_debug()
+                self.logger.force_debug()
         elif message == 'test':
             for thread in threading.enumerate():
                 print(thread.name)
@@ -97,6 +98,9 @@ class ClientProcess:
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
+                if msg['message'] is None:
+                    self.logger.info(str(msg['message']))
+                    return
                 for i in msg['message'].splitlines():
                     message = self.message_formatter(msg['client'], msg['player'], i)
                     self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server, not_spam=True)
@@ -121,4 +125,29 @@ class ClientProcess:
                         msg['result']['type'] = 2
                 else:
                     msg['result']['type'] = 2
+                self.client.send_msg(socket, json.dumps(msg))
+            elif msg['action'] == 'api':
+                plugin_id = msg['plugin']
+                function = msg['function']
+                keys: list = msg['keys']
+                msg['result']['responded'] = True
+                if self.client.server is not None:
+                    plugin = self.client.server.get_plugin_instance(plugin_id)
+                    if plugin is None:
+                        msg['result']['type'] = 1
+                    else:
+                        if not hasattr(plugin, function):
+                            msg['result']['type'] = 2
+                        else:
+                            try:
+                                func = getattr(plugin, function)
+                                result = func(*keys)
+                            except Exception:
+                                msg['result']['type'] = 3
+                                self.logger.bug_log(error=True)
+                                return
+                            msg['result']['type'] = 0
+                            msg['result']['result'] = result
+                else:
+                    msg['result']['type'] = 3
                 self.client.send_msg(socket, json.dumps(msg))

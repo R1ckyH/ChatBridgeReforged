@@ -22,23 +22,39 @@
 
 `edit config.yml for config`
 
+### server_setting
+`Dict`
+
 | config | data type | description |
 |----|----|----|
-| server-setting | `dict` | basic setting of server |
 | host_name | `string`| ip address for hosting |
 | port | `int` | port for hosting |
 | aes_key | `string` | key for `AES` encryption |
-| clients | `list` | list of clients |
+
+### clients
+`list`
+
+| config | data type | description |
+|----|----|----|
 | name | `string` | name of client |
 | password | `string`| password of client |
-| debug | `dict` | debug mode |
+| config | data type | description |
+
+### debug
+`Dict`
+
+| config | data type | description |
+|----|----|----|
 | all | `bool` | debug mode switch |
 | CBR | `bool` | debug mode switch |
 | plugin | `bool` | debug mode switch |
 
 ## cqhttp
+
 [cqhttp document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/cqhttp.md)
 
 ## Plugin
 
 [Plugin document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/plugin.md)
+
+Plugin Catalogue will launch after release

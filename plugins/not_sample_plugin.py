@@ -29,7 +29,7 @@ def list_player(server, info):
         info.cancel_send_message()
         online_mc_client = server.get_online_mc_clients()
         players = {}
-        results = server.send_servers_command('list', online_mc_client)
+        results = server.servers_command_query('list', online_mc_client)
         if results is None:
             server.tell_message("No information", info.source_client, info.sender)
             return

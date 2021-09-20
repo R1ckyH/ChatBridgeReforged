@@ -58,14 +58,17 @@ class CBRTCPClient(Network):
         self.cancelled = False
         self.connecting = False
         self.name = config.name
+        self.password = config.password
+        self.timeout = config.timeout
         super().__init__(config.aes_key, self)
         self.process = ClientProcess(self)
 
     def setup(self, new_config: Config):
         self.config.init_all_config()
-        self.logger.load(new_config)
+        self.logger.load(new_config, self)
         super().__init__(new_config.aes_key, self)
         self.name = new_config.name
+        self.password = new_config.password
         self.connected = False
         self.cancelled = False
         self.connecting = False
@@ -93,7 +96,7 @@ class CBRTCPClient(Network):
             self.connected = False
             return
         self.connected = True
-        self.socket.settimeout(self.config.timeout)
+        self.socket.settimeout(self.timeout)
         self.connecting = False
         self.handle_echo()
 
@@ -103,6 +106,8 @@ class CBRTCPClient(Network):
             self.logger.print_msg("Closed connection", 2, info, server=self.server)
         else:
             self.logger.print_msg("Connection already closed", 2, info, server=self.server)
+            self.connected = False
+            self.connecting = False
 
     def close_connection(self, target=''):
         if self.socket is not None and self.connected:
@@ -112,6 +117,7 @@ class CBRTCPClient(Network):
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")
         self.connected = False
+        self.connecting = False
 
     def reload(self, info=None):
         self.logger.print_msg("Reload ChatBridgeReforged Client now", 2, info, server=self.server)
@@ -151,7 +157,7 @@ class CBRTCPClient(Network):
         self.process.process_msg(msg, self.socket)
 
     def handle_echo(self):
-        self.login(self.name, self.config.password)
+        self.login(self.name, self.password)
         threading.Thread(target=self.keep_alive, name='CBRPing', daemon=True).start()
         while self.socket is not None and self.connected:
             try:
