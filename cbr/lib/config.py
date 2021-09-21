@@ -47,8 +47,8 @@ class ConfigChecker:
             self.logger.error("Config file is missing, default config generated")
             self.__gen_config()
         else:
-            with open(CONFIG_PATH, 'r') as f:
-                data = yaml.safe_load(f)
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
+                data = yaml.safe_load(config)
             try:
                 self.logger.debug_config = data['debug']
                 self.logger.debug_all = self.logger.debug_config['all']
