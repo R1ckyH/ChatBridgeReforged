@@ -1,6 +1,7 @@
 """
 CBR config file stuffs
 """
+import os
 import shutil
 
 from os import path
@@ -40,6 +41,8 @@ class ConfigChecker:
 
     def check_all(self):
         self.logger.debug("Checking config ......", "CBR")
+        if not path.exists('config'):
+            os.mkdir('config')
         if not path.exists(CONFIG_PATH):
             self.logger.error("Config file is missing, default config generated")
             self.__gen_config()
