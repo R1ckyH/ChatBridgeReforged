@@ -40,9 +40,11 @@ class ConfigChecker:
         self.logger = logger
 
     def check_all(self):
-        self.logger.debug("Checking config ......", "CBR")
+        self.logger.info("Checking config ......")
         if not path.exists('config'):
             os.mkdir('config')
+        if not path.exists('plugins'):
+            os.mkdir('plugins')
         if not path.exists(CONFIG_PATH):
             self.logger.error("Config file is missing, default config generated")
             self.__gen_config()
@@ -64,6 +66,7 @@ class ConfigChecker:
         else:
             shutil.copyfile(DEFAULT_CONFIG_PATH, CONFIG_PATH)
             self.logger.info("Default config is used now")
+            self.logger.info("Please configure the config and restart again")
             self.logger.info("Exit now")
             exit(0)  # exit here
 

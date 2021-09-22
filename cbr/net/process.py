@@ -32,14 +32,17 @@ class Process:
         self.formatter = formatter
 
     async def close_connection(self, stream: trio.SocketStream, target):
-        if target != '':
+        if target != '' and self.server.clients[target].online:
             self.server.clients[target].online = False
             await self.server.send_stop(stream, target)
             process = self.server.clients[target].process
             process.cancelled = True
             if process.cancel_scope is not None:
                 process.cancel_scope.cancel()
-        await stream.aclose()
+        elif target != '':
+            self.logger.warning(f"{target} is already close")
+        if stream is not None:
+            await stream.aclose()
 
     async def msg_mc_server(self, msg, client_except=''):
         for i in self.server.clients.keys():
@@ -351,5 +354,9 @@ class ClientProcess(Process):
                     else:
                         self.logger.error(f'Client {receiver} not found')
         elif self.current_client == '':
-            self.logger.warning(f"Undefined connection from {stream.socket.getpeername()}")
+            self.logger.warning(f"Undefined connection from {address}")
             self.cancelled = True
+        else:
+            self.logger.error(f"Receive Unresolved message, '{msg}' from {address} of client '{self.current_client}'")
+            self.logger.info(f"Close Connection to {self.current_client}")
+            await self.close_connection(stream, self.current_client)

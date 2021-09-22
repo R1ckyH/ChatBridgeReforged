@@ -26,7 +26,6 @@ class AdvancedConfig:
                 data = dict(json.load(config_file))
         else:
             if not os.path.exists(self.advanced_path):
-                os.makedirs(os.path.dirname(self.advanced_path), exist_ok=True)
                 self.logger.error('Config not find')
                 raise FileNotFoundError("Advanced_config not find")
             with open(self.advanced_path, 'r', encoding='utf-8') as config_file:

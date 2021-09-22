@@ -14,7 +14,7 @@ from datetime import datetime
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-LIB_VERSION = "v20210820"
+LIB_VERSION = "v20210915"
 CLIENT_TYPE = "cqhttp"
 client: 'CBRTCPClient'
 CQ_bot: 'CQClient'
@@ -213,7 +213,7 @@ class Config:
 
 class CQClient(websocket.WebSocketApp):
     def __init__(self, config: Config, logger: CBRLogger, client_class: 'CBRTCPClient'):
-        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close)
+        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close, on_open=self.on_open)
         self.client = client_class
         self.logger = logger
         self.config = config
@@ -221,14 +221,19 @@ class CQClient(websocket.WebSocketApp):
     def start(self):
         while True:
             self.run_forever()
-            time.sleep(5)
+            for i in range(5, 1, -1):
+                self.logger.error(f"Connection failed, reconnect after {i} second")
+                time.sleep(1)
 
     def on_message(self, client_class, message):
         if not self.client.connected:
             return
         data = json.loads(message)
         if 'status' in data:
-            self.logger.debug('CQBot return status {}'.format(data['status']))
+            if 'msg' in data and data['msg'] == 'SEND_MSG_API_ERROR':
+                self.logger.error('CQBot error on sending message')
+            else:
+                self.logger.debug('CQBot return status {}'.format(data['status']))
         elif data['post_type'] == 'message' and data['message_type'] == 'group':
             if str(data['group_id']) == self.config.react_group and data['anonymous'] is None:
                 msg = msg_json_formatter(self.client.name, data['sender']['nickname'], data['raw_message'])
@@ -239,6 +244,9 @@ class CQClient(websocket.WebSocketApp):
     def on_error(self, client_class, error2=None):
         self.logger.error(str(error2))
         self.logger.bug_log()
+
+    def on_open(self, client_class):
+        self.logger.info(f"Connected to qq")
 
     def on_close(self, client_class, close_code, close_msg):
         self.logger.info(f"Close connection with code : {close_code}")
@@ -475,10 +483,11 @@ class CBRTCPClient(Network):
         except Exception:
             self.logger.bug_log(error=True)
             self.connected = False
+            self.connecting = False
             return
         self.connected = True
-        self.socket.settimeout(timeout)
         self.connecting = False
+        self.socket.settimeout(timeout)
         self.handle_echo()
 
     def try_stop(self):

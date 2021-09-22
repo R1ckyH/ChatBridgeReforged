@@ -6,13 +6,13 @@
 - python version should be 3.6+
 - `pip install -r requirements.txt` to install requirements!
 
+  ![image](./CBR.svg)
+
 ## Compare to [ChatBridge](https://github.com/TISUnion/ChatBridge)
 
-- Better logging(maybe)
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
-  - permission system will launch soon
-- support to [ChatBridge](https://github.com/TISUnion/ChatBridge) clients so far
+- support to [ChatBridge](https://github.com/TISUnion/ChatBridge) `version` < `2.0` clients so far
   - Some function in ChatBridge will not be supported
 - [Ricky](https://github.com/rickyhoho) is a suck author
   - But he will try his best to maintain this repository

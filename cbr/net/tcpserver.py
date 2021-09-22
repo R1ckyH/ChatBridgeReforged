@@ -138,7 +138,14 @@ class CBRTCPServer(Network):
 
     async def server_process(self, stream: trio.SocketStream, client_process: ClientProcess, address, nursery):
         msg = await self.receive_msg(stream, address)
-        msg = json.loads(msg)
+        try:
+            msg = json.loads(msg)
+        except Exception:
+            await self.send_stop(stream)
+            self.logger.info(f"Failed decode message from {address}")
+            self.logger.bug(exit_now=False)
+            await stream.aclose()
+            return
         await client_process.process_msg(msg, stream, address, nursery)
 
     def input_process(self):

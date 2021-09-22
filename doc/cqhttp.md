@@ -7,7 +7,7 @@ cqhttp Document
 
 it is managed in plugin/cqhttp.py.
 
-To use cqhttp in CBR, you should use the plugin cqhttp.py, 
+To use cqhttp in CBR, you should use the plugin `cqhttp.py`, 
 
 Of course, you can modify it if you want
 
@@ -18,5 +18,6 @@ setup it with websocket
 CBR cqhttp client is work as a websocket client
 
 Things you need to do
-- edit host, port, and access-token in cqhttp's config
-- edit the config in CBR cqhttp client.
+- edit `host`, `port`, and `access-token` in cqhttp's config
+- edit the `config` of CBR `cqhttp client`.
+- edit the `config/cqhttp.json` of CBR plugin `cqhttp.py`.

@@ -94,10 +94,11 @@ class CBRTCPClient(Network):
         except Exception:
             self.logger.bug_log(error=True)
             self.connected = False
+            self.connecting = False
             return
         self.connected = True
-        self.socket.settimeout(self.timeout)
         self.connecting = False
+        self.socket.settimeout(self.timeout)
         self.handle_echo()
 
     def try_stop(self, info=None):
