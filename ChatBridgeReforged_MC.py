@@ -293,26 +293,26 @@ class ClientProcess:
             for line in str(help_msg).splitlines():
                 self.client.logger.out_log(line)
         elif message == 'stop':
-            self.client.try_stop()
+            self.client.try_stop(info)
         elif message == 'start':
-            self.client.try_start()
+            self.client.try_start(info)
         elif message == 'status':
-            self.client.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2)
+            self.client.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
         elif message == 'ping':
             ping = self.ping_test()
-            self.ping_log(ping)
+            self.ping_log(ping, info, server)
         elif message == 'reload':
-            self.client.reload()
+            self.client.reload(info)
         elif message == 'restart':
-            self.client.try_stop()
+            self.client.try_stop(info)
             time.sleep(0.1)
-            self.client.try_start()
-            self.client.logger.print_msg(f"CBR status: Online = {client.connected}", 2, info, server=server)
+            self.client.try_start(info)
+            self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
         elif message == 'exit':
             exit(0)
         elif message == 'forcedebug':
             if info is None or not info.is_player or server.get_permission_level(info.player) > 2:
-                self.logger.force_debug()
+                self.logger.force_debug(info, server)
         elif message == 'test':
             for thread in threading.enumerate():
                 print(thread.name)
@@ -563,11 +563,11 @@ def on_info(server: ServerInterface, info: Info):
         # if msg.endswith('<--[HERE]'):
         #    msg = msg.replace('<--[HERE]', '')
         client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', ""), server, info)
-    elif info.is_player:
+    else:
         if client is None:
             return
         client.try_start()
-        if client.connected:
+        if info.is_player and client.connected:
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
 
 

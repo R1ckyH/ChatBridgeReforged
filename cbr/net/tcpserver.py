@@ -103,7 +103,7 @@ class CBRTCPServer(Network):
             address = stream.socket.getpeername()
         except Exception:
             self.logger.bug(False, True)
-            self.logger.critical("Error in get peer name", "CBR")
+            self.logger.critical("Error in get peer name")
             address = 'ERROR ADDRESS'
         self.logger.debug(f"new session started from {address}", "CBR")
         client_process = ClientProcess(self, self.logger)

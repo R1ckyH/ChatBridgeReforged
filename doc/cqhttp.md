@@ -1,7 +1,7 @@
 cqhttp Document
 ---
 
-**it is a self selection to use cqhttp or not**
+**it is a self decision to use cqhttp or not**
 
 **CBR cqhttp client is available for most of the one_bot v9 qq bot**
 

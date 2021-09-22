@@ -16,11 +16,11 @@ def on_info(server: PluginServerInterface, info: Info):
         # if msg.endswith('<--[HERE]'):
         #    msg = msg.replace('<--[HERE]', '')
         client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', ""), server, info)
-    elif info.is_player:
+    else:
         if client is None:
             return
         client.try_start()
-        if client.connected:
+        if info.is_player and client.connected:
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
 
 
@@ -44,6 +44,7 @@ def main(server=None):
     config = Config(logger, server)
     config.init_all_config()
     client = CBRTCPClient(config, logger, server)
+    logger.load(config, client)
     client.try_start()
     if server is None:
         while True:
