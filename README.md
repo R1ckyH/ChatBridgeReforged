@@ -1,3 +1,5 @@
+[中文](https://github.com/rickyhoho/ChatBridgeReforged/blob/master/README-cn.md) | **English**
+
 # ChatBridgeReforged
 
 - Beta version, please bear the risk if you use it
