@@ -169,4 +169,5 @@ class CBRTCPServer(Network):
         for i in range(len(self.__register_help_msg)):
             if self.__register_help_msg[i]['prefix'] == prefix:
                 self.__register_help_msg.pop(i)
+                break
         self.__register_help_msg.append({'prefix': prefix, 'command': msg})

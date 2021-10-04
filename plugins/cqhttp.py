@@ -72,7 +72,6 @@ def on_command(server: CBRInterface, info: MessageInfo):
 
 def on_load(server: CBRInterface):
     global full_msg_group_client, less_msg_group_client
-    server.register_help_message("##list", "list out the online players in servers")
     if os.path.exists(config_path):
         with open(config_path, 'r', encoding='utf-8') as config:
             data = json.load(config)
