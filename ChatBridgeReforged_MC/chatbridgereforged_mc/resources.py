@@ -6,11 +6,20 @@ from chatbridgereforged_mc.utils import *
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-VERSION = '0.0.1-Beta-015'
+VERSION = '0.0.1-Beta-016'
 LIB_VERSION = "v20210915"
-CLIENT_TYPE = 'mc'
+CLIENT_TYPE = "mc"
 
 ADVANCED_CONFIG_PATH = 'advanced_config.json'
+
+DEFAULT_ADVANCED_CONFIG = {
+    "debug_mode": False,
+    "config_path": "config/ChatBridgeReforged_MC.json",
+    "log_path": "logs/ChatBridgeReforged_MC.log",
+    "client_color": "6",
+    "ping_time": 60,
+    "timeout": 120
+}
 
 DEFAULT_CONFIG = {
     "name": "survival",
@@ -18,15 +27,6 @@ DEFAULT_CONFIG = {
     "host_name": "127.0.0.1",
     "host_port": 30001,
     "aes_key": "ThisIsTheSecret"
-}
-
-DEFAULT_ADVANCED_CONFIG = {
-    "debug_mode": False,
-    "config_path": "config/ChatBridgeReforged_client.json",
-    "log_path": "logs/ChatBridgeReforged_Client_mc.log",
-    "client_color": "6",
-    "ping_time": 60,
-    "timeout": 120
 }
 
 help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r

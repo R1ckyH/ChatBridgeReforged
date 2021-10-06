@@ -32,7 +32,7 @@ class CBRLogger:
     def out_log(self, msg: str, error=False, debug=False, not_spam=False):
         for i in range(6):
             msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '')
+        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if error:
             msg = heading + '[ERROR]: ' + msg

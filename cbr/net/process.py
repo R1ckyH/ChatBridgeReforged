@@ -1,7 +1,6 @@
 import json
 import time
 import trio
-import threading
 
 from typing import TYPE_CHECKING
 
@@ -11,9 +10,42 @@ from cbr.resources import formatter
 
 if TYPE_CHECKING:
     from cbr.net.tcpserver import CBRTCPServer
+    from cbr.plugin.plugin import PluginManager
 
-help_msg = '''====================CBR====================
-help/? -> get help msg
+help_msg = '''§r====================CBR====================
+##help §r->§a get plugin help msg
+##CBR help/? §r->§a get help msg
+##CBR status §r->§a Show CBR status
+##CBR plugin §r->§a Show plugin command help message
+##CBR reload §r->§a Show reload command help message
+'''
+reload_msg = '''§r====================CBR====================
+##CBR reload plugin §r->§a modify all changed plugin
+##CBR reload all §r->§a Reload all above
+'''
+'''
+##CBR reload config §r->§a reload CBR config
+'''  # TODO reload config(next version)?
+plugin_msg = '''§r====================CBR====================
+##CBR plugin list §r->§a show plugin list
+##CBR plugin load §b<plugin_file_name> §r->§a load plugin
+##CBR plugin unload §b<plugin_file_name> §r->§a unload plugin(Not available without cli)
+##CBR plugin reload §b<plugin_id> §r->§a modify all changed plugin
+##CBR plugin reloadall §r->§a reload all plugins
+##CBR plugin enable §b<plugin_id> §r->§a enable plugin
+##CBR plugin disable §b<plugin_id> §r->§a disable plugin(Not available without cli)
+'''
+status_msg = '''§r====================CBR====================
+##CBR status CBR §r->§a show CBR status
+##CBR status ping §e[client_name] §r->§a show ping of clients
+##CBR status online §r->§a show status of clients
+##CBR status all §r->§a Reload all above
+'''
+cli_help_msg = '''§r====================CBR====================
+##CBR help/? -> get help msg
+##CBR status -> Show CBR status
+##CBR plugin -> Show plugin command help message
+##CBR reload -> Show reload command help message
 list -> get clients in config.yml
 stop/end -> stop server
 stop <client name> -> stop client connection
@@ -28,7 +60,8 @@ class Process:
     def __init__(self, tcp_server: 'CBRTCPServer', logger: CBRLogger):
         self.server = tcp_server
         self.logger = logger
-        self.plugin_manager = self.server.plugin_manager
+        self.config = tcp_server.config
+        self.plugin_manager: 'PluginManager' = self.server.plugin_manager
         self.formatter = formatter
 
     async def close_connection(self, stream: trio.SocketStream, target):
@@ -69,23 +102,19 @@ class Process:
 
     def ping_log(self, ping, target):
         if ping == -2:
-            self.logger.info(f'- {target}: Offline')
+            return f'- {target}: Offline'
         elif ping == -1:
-            self.logger.info(f'- {target}: No response - time = 2000ms')
+            return f'- {target}: No response - time = 2000ms'
         else:
-            self.logger.info(f'- {target}: Alive - time = {ping}ms')
+            return f'- {target}: Alive - time = {ping}ms'
 
     async def message_process(self, client, player, msg, current_client, event='on_message', raw_msg: dict = None):
         message = self.formatter.info_formatter(client, player, msg)
-        if raw_msg is not None and 'extra' in raw_msg.keys():
-            extra = raw_msg['extra']
-        else:
-            extra = None
         if client in self.server.clients.keys():
             client_type = self.server.clients[client].type
         else:
             client_type = ''
-        info = MessageInfo(client, msg, player, client_type, self.logger, extra)
+        info = MessageInfo(client, msg, player, client_type, self.logger)
         async with trio.open_nursery() as nursery:
             await self.plugin_manager.run_event(event, info, nursery=nursery)
             if event == 'on_message':
@@ -108,96 +137,54 @@ class ServerProcess(Process):
 
     def online_list(self):
         cnt = len(self.server.clients)
-        self.logger.info(f'Client count: {cnt}')
+        msg = f'Client count: {cnt}'
         for i in self.server.clients.keys():
-            self.logger.info(f"- {i} : online = {self.server.clients[i].online}")
+            msg += f"\n- {i} : online = {self.server.clients[i].online}"
+        return msg
+
+    async def ping_cache(self, target):
+        self.server.clients[target].ping = await self.ping_test(target)
+
+    def count_online_client(self):
+        count = 0
+        for i in self.server.clients.values():
+            if i.online:
+                count += 1
+        return count
+
+    def get_status(self):
+        msg = f"ChatBridgeReforged@{self.config.version}\n"
+        msg += f"Lib version : {self.config.lib_version}\n"
+        msg += f"Online Client : {self.count_online_client()}"
+        return msg
 
     async def ping_all(self):
         self.logger.debug('Start ping', "CBR")
+        async with trio.open_nursery() as nursery:
+            for i in self.server.clients.keys():
+                nursery.start_soon(self.ping_cache, i)
+        msg = ''
         for i in self.server.clients.keys():
-            self.server.clients[i].ping = await self.ping_test(i)
-        self.logger.info('Ping clients:')
-        for i in self.server.clients.keys():
-            self.ping_log(self.server.clients[i].ping, i)
+            msg += "\n" + self.ping_log(self.server.clients[i].ping, i)
+        return msg
 
-    def help_msg(self):
-        for i in help_msg.splitlines():
-            self.logger.info(i)
+    def get_help_msg(self, name=''):
+        if name == '':
+            return help_msg
+        elif name == 'reload':
+            return reload_msg
+        elif name == 'plugin':
+            return plugin_msg
+        elif name == 'status':
+            return status_msg
 
     async def msg_process(self, msg: str, nursery: trio.Nursery):
-        args = msg.split(' ')
-        length = len(args)
+        # args = msg.split(' ')
+        # length = len(args)
         cancel = await self.message_process('CBR', '', msg, "CBR", 'on_command')
         if cancel:
             return
-        if msg == 'help' or msg == '?':
-            self.help_msg()
-        elif msg == '##help' or msg == '#?':
-            for i in self.server.get_register_help_msg().splitlines():
-                self.logger.info(i)
-        elif msg == 'list':
-            self.online_list()
-        elif msg.startswith('stop') or msg == 'end':
-            if msg == 'stop' or msg == 'end':
-                await self.server.stop()
-            else:
-                if length > 1 and args[1] in self.server.clients.keys():
-                    await self.close_connection(self.server.clients[args[1]].stream, args[1])
-                else:
-                    self.logger.error("Client not found")
-        elif msg.startswith('say'):
-            msg = msg.replace('say ', '')
-            nursery.start_soon(self.message_process, "CBR", '', msg, "CBR")
-        elif msg.startswith('ping'):
-            if msg == 'ping':
-                await self.ping_all()
-            else:
-                if length > 1 and args[1] in self.server.clients.keys():
-                    target = args[1]
-                    ping = await self.ping_test(target)
-                    self.ping_log(ping, target)
-                else:
-                    self.logger.error("Client not found")
-        elif msg == 'test':
-            for thread in threading.enumerate():
-                print(thread.name)
-        elif msg == 'reloadall':
-            nursery.start_soon(self.server.plugin_manager.reload_all_plugins)
-            """
-            elif msg.startswith('plg'):
-                if length > 1 and args[1] in self.server.clients.keys():
-                    target = args[1]
-                    if self.server.clients[target].online:
-                        cmd = msg.replace('cmd ' + args[1] + ' ', '')
-                        await self.send_cmd(cmd, target=args[1])
-                    else:
-                        self.logger.error("Client not online")
-                else:
-                    self.logger.error("Client not found")
-            """
-        elif msg.startswith('cmd'):
-            if length > 1 and args[1] in self.server.clients.keys():
-                target = args[1]
-                if self.server.clients[target].online:
-                    cmd = msg.replace('cmd ' + args[1] + ' ', '')
-                    await self.server.send_command(self.server.clients[args[1]].stream, cmd, receiver=args[1], target=args[1])
-                else:
-                    self.logger.error("Client not online")
-            else:
-                self.logger.error("Client not found")
-        elif msg.startswith('forcedebug'):
-            if length > 1:
-                if args[1] in ["CBR", "plugin"]:
-                    module = args[1]
-                    self.logger.force_debug(module)
-                elif args[1] == 'list':
-                    self.logger.info(self.logger.debug_config)
-                else:
-                    self.logger.force_debug()
-            else:
-                self.logger.force_debug()
-        else:
-            self.logger.error('Unknown command, use help or ? for help message')
+        self.logger.error('Unknown command, use ##CBR help for help message')
 
 
 class ClientProcess(Process):
@@ -280,8 +267,6 @@ class ClientProcess(Process):
             elif msg['action'] == 'message':
                 nursery.start_soon(self.message_process, msg['client'], msg['player'], msg['message'],
                                    self.current_client, 'on_message', msg)
-                if msg['message'] == '##help':
-                    await self.server.send_message(stream, "CBR", '', self.server.get_register_help_msg(), msg['player'])
             elif msg['action'] == 'stop':
                 await self.close_connection(stream, self.current_client)
                 self.logger.info(f'Connection closed from {self.current_client}')
@@ -326,7 +311,7 @@ class ClientProcess(Process):
                     if sender == 'CBR':
                         if 'type' not in msg['result'].keys():
                             self.logger.warning(
-                                f"Unknown result of using api of {plugin} to {receiver} , maybe you should update the version of CBR client")
+                                f"Unknown result of using api of {plugin} to {receiver} , you may update the version of CBR client")
                             self.server.clients[self.current_client].cmd_result = None
                         elif msg['result']['type'] == 0:
                             self.server.clients[self.current_client].cmd_result = msg['result']['result']

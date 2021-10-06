@@ -2,7 +2,6 @@
 config here
 """
 import os
-import json
 
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.resources import *

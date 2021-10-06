@@ -30,6 +30,7 @@ class StdoutFilter(logging.Filter):
         return True
 
 
+# TODO: Advanced log(now?)
 class CBRLogger(logging.getLoggerClass()):
     def __init__(self, name, config: Config):
         if not path.exists(log_file):
@@ -52,7 +53,7 @@ class CBRLogger(logging.getLoggerClass()):
         self.addHandler(self.file_handler)
         self.setLevel(logging.DEBUG)
 
-    def bug(self, exit_now=True, error=False):
+    def bug(self, exit_now=True, error=False):  # TODO: better logger.bug(now)
         for line in traceback.format_exc().splitlines():
             if error:
                 self.error(line, exc_info=False)

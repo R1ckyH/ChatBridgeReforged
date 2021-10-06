@@ -4,11 +4,11 @@ import trio
 
 from functools import partial
 
+from cbr.lib.config import Config
 from cbr.lib.logger import CBRLogger
 from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
-from cbr.plugin.cbrinterface import CBRInterface
 
 
 class Clients:
@@ -28,7 +28,7 @@ class Clients:
 
 
 class CBRTCPServer(Network):
-    def __init__(self, logger: CBRLogger, config):
+    def __init__(self, logger: CBRLogger, config: Config):
         self.logger = logger
         self.config = config
         self.lib_version = self.config.lib_version
@@ -41,16 +41,16 @@ class CBRTCPServer(Network):
         self.nursery = None
         self.__register_help_msg = []
         self.token = None
-        self.server_interface = None
+        self.server_running = False
         # TODO: better exception
 
     def start(self):
         trio.run(self.run)
 
     async def run(self):
+        self.server_running = True
         self.token = trio.lowlevel.current_trio_token()
-        self.server_interface = CBRInterface(self, self.token)
-        self.plugin_manager = PluginManager(self.server_interface, self.logger)
+        self.plugin_manager = PluginManager(self, self.logger)
         self.process = ServerProcess(self, self.logger)
         await self.main()
 
@@ -66,7 +66,7 @@ class CBRTCPServer(Network):
         self.process.cancelled = True
         await self.close_all_connection()
         self.nursery.cancel_scope.cancel()
-        self.server_interface._server_running = False
+        self.server_running = False
         await self.plugin_manager.unload_all_plugins()
         self.logger.info("Server closed")
 
@@ -165,9 +165,15 @@ class CBRTCPServer(Network):
             msg = msg + f"{i['prefix']}: §f{i['command']}\n"
         return msg
 
-    def add_register_help_msg(self, prefix, msg):
+    def add_register_help_msg(self, plugin_id, prefix, msg):
         for i in range(len(self.__register_help_msg)):
             if self.__register_help_msg[i]['prefix'] == prefix:
                 self.__register_help_msg.pop(i)
                 break
-        self.__register_help_msg.append({'prefix': prefix, 'command': msg})
+        self.__register_help_msg.append({'prefix': prefix, 'command': msg, 'plugin_id': plugin_id})
+
+    def del_register_help_msg(self, plugin_id):
+        for i in range(len(self.__register_help_msg)):
+            if self.__register_help_msg[i]['plugin_id'] == plugin_id:
+                self.__register_help_msg.pop(i)
+                break

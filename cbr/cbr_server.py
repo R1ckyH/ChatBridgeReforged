@@ -28,4 +28,4 @@ class CBRServer:
             self.logger.info("Exit now")
             exit(0)
         except Exception:
-            self.logger.bug()
+            self.logger.bug(error=True)

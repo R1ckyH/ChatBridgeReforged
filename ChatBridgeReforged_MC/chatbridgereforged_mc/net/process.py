@@ -52,10 +52,13 @@ class ClientProcess:
         else:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
-    def input_process(self, message, server=None, info=None):
-        if message == 'help' or (message == '' and server is not None and info is not None):
-            for line in str(help_msg).splitlines():
-                self.client.logger.out_log(line)
+    def input_process(self, message, server: PluginServerInterface = None, info=None):
+        if message == 'help' or message == '':
+            if server is not None and info is not None:
+                server.reply(info, help_msg)
+            else:
+                for line in str(help_msg).splitlines():
+                    self.client.logger.out_log(line)
         elif message == 'stop':
             self.client.try_stop(info)
         elif message == 'start':
@@ -71,6 +74,7 @@ class ClientProcess:
             self.client.try_stop(info)
             time.sleep(0.1)
             self.client.try_start(info)
+            time.sleep(0.1)
             self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
         elif message == 'exit':
             exit(0)

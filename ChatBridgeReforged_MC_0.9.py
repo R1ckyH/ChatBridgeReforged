@@ -19,15 +19,15 @@ CLIENT_TYPE = "mc"
 client: 'CBRTCPClient'
 
 debug_mode = False
-CONFIG_PATH = 'config/ChatBridgeReforged_client.json'
-LOG_PATH = 'logs/ChatBridgeReforged_Client_mc.log'
+CONFIG_PATH = 'config/ChatBridgeReforged_MC.json'
+LOG_PATH = 'logs/ChatBridgeReforged_MC.log'
 client_color = '6'  # minecraft color code
 ping_time = 60
 timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.0.1-Beta-015',
+    'version': '0.0.1-Beta-016',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -109,7 +109,7 @@ class CBRLogger:
     def out_log(self, msg: str, error=False, debug=False, not_spam=False):
         for i in range(6):
             msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '')
+        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if error:
             msg = heading + '[ERROR]: ' + msg
@@ -289,9 +289,12 @@ class ClientProcess:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
     def input_process(self, message, server=None, info=None):
-        if message == 'help' or (message == '' and server is not None and info is not None):
-            for line in str(help_msg).splitlines():
-                self.client.logger.out_log(line)
+        if message == 'help' or message == '':
+            if server is not None and info is not None:
+                server.reply(info, help_msg)
+            else:
+                for line in str(help_msg).splitlines():
+                    self.client.logger.out_log(line)
         elif message == 'stop':
             self.client.try_stop(info)
         elif message == 'start':
@@ -307,6 +310,7 @@ class ClientProcess:
             self.client.try_stop(info)
             time.sleep(0.1)
             self.client.try_start(info)
+            time.sleep(0.1)
             self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
         elif message == 'exit':
             exit(0)
@@ -565,7 +569,7 @@ def on_info(server, info):
         # info.cancel_send_to_server()
         # if msg.endswith('<--[HERE]'):
         #    msg = msg.replace('<--[HERE]', '')
-        client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', ""), server, info)
+        client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, ""), server, info)
     else:
         if client is None:
             return

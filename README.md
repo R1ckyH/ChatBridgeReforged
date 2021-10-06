@@ -18,6 +18,11 @@
   - But he will try his best to maintain this repository
   - Please cheer him so that he will be happy to maintain this repository
 
+## Basic
+
+use `##help` to get plugin help command
+use `##CBR` to get help command
+
 ## Config
 
 `edit config.yml for config`

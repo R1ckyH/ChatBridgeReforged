@@ -19,5 +19,5 @@ CBR cqhttp client is work as a websocket client
 
 Things you need to do
 - edit `host`, `port`, and `access-token` in cqhttp's config
-- edit the `config` of CBR `cqhttp client`.
+- edit the `config` of CBR `ChatBridgeReforged_cqhttp.py`.
 - edit the `config/cqhttp.json` of CBR plugin `cqhttp.py`.

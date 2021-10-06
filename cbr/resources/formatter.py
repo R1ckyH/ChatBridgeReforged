@@ -72,3 +72,10 @@ def api_formatter(receiver, plugin_id, function_name, keys: dict):
         }
     }
     return json.dumps(message)
+
+
+def no_color_formatter(msg):
+    for i in range(6):
+        msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
+    msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
+    return msg

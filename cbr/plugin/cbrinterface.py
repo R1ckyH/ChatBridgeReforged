@@ -10,38 +10,43 @@ from cbr.resources import formatter
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
     from cbr.net.tcpserver import CBRTCPServer
+    from cbr.plugin.info import MessageInfo
 
 
-class ServerInterfaceLogger:
+class CBRInterfaceLogger:
     """
         simple logger for server_interface, recommend to use this logger instead of CBRLogger
     """
     def __init__(self, logger: 'CBRLogger', token: trio.lowlevel.TrioToken):
         self.__logger = logger
         self.__token = token
+        self.__formatter = formatter
 
     def info(self, msg):
+        msg = self.__formatter.no_color_formatter(msg)
         trio.from_thread.run_sync(self.__logger.info, msg, trio_token=self.__token)
 
     def error(self, msg):
+        msg = self.__formatter.no_color_formatter(msg)
         trio.from_thread.run_sync(self.__logger.error, msg, trio_token=self.__token)
 
     def warning(self, msg):
+        msg = self.__formatter.no_color_formatter(msg)
         trio.from_thread.run_sync(self.__logger.warning, msg, trio_token=self.__token)
 
     def debug(self, msg):
+        msg = self.__formatter.no_color_formatter(msg)
         trio.from_thread.run_sync(self.__logger.debug, msg, "plugin", trio_token=self.__token)
 
 
 class CBRInterface:
-    def __init__(self, server: 'CBRTCPServer', token: trio.lowlevel.TrioToken):
+    def __init__(self, server: 'CBRTCPServer', token: trio.lowlevel.TrioToken, plugin_id):
         self._server = server
         self.__token = token
-        self.__formatter = formatter
         self.cbr_logger: 'CBRLogger' = server.logger
-        self.logger = ServerInterfaceLogger(self.cbr_logger, token)
-        self._server_running = True
+        self.logger = CBRInterfaceLogger(self.cbr_logger, token)
         self.__result_cache = None
+        self.__current_plugin_id = plugin_id
 
     def is_client_online(self, client):
         """
@@ -116,7 +121,29 @@ class CBRInterface:
             trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, receiver, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
-            # TODO: raise Error
+            # TODO: raise Error(to be confirm)
+
+    def reply(self, msg, info: 'MessageInfo'):
+        """
+            reply to client or player(if exist)
+        """
+        if not self.__running():
+            self.logger.error("Server closed, not allow to send anything")
+            return
+        if info.source_client == "CBR":
+            for i in msg.splitlines():
+                if self.__current_plugin_id == "ChatBridgeReforged":
+                    self.logger.info(i)
+                else:
+                    self.logger.info('- ' + i)
+            return
+        target = info.source_client
+        receiver = info.sender
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, receiver, target, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
 
     def send_message(self, msg, target):
         """
@@ -135,9 +162,9 @@ class CBRInterface:
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def send_custom_message(self, target, msg, client, player=''):
+    def send_custom_message(self, target, msg, client, player='', receiver=''):
         """
-            send message to target client with extra custom information
+            send message to target client with custom information
         """
         if not self.__running():
             return
@@ -147,7 +174,7 @@ class CBRInterface:
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, client, player, msg, target, trio_token=self.__token)
+            trio.from_thread.run(self._server.send_message, stream, client, player, msg, receiver, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
@@ -159,7 +186,7 @@ class CBRInterface:
             return None
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_command, stream, command, target, target, trio_token=self.__token)
+            trio.from_thread.run(self._server.send_command, stream, command, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
@@ -171,7 +198,7 @@ class CBRInterface:
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_command, stream, command, target, target, trio_token=self.__token)
+            trio.from_thread.run(self._server.send_command, stream, command, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
@@ -193,7 +220,8 @@ class CBRInterface:
         """
             query for get the result of multi servers
 
-            use this function instead of command_query to have a better performance if sending same command to multi cbr clients
+            use this function instead of command_query to have a better performance
+            if sending same command to multi cbr clients
 
             targets is list of server to send
 
@@ -226,10 +254,10 @@ class CBRInterface:
         """
             register help message for command `##help`
         """
-        self._server.add_register_help_msg(prefix, msg)
+        self._server.add_register_help_msg(self.__current_plugin_id, prefix, msg)
 
     def __running(self):
-        if self._server_running is False:
+        if self._server.server_running is False:
             self.logger.error("Server closed, not allow to send anything")
             return False
         return True
@@ -264,7 +292,7 @@ class CBRInterface:
         if self.__exist(target):
             with trio.move_on_after(2) as self._server.clients[target].cmd_lock:
                 self._server.clients[target].cmd_result = None
-                await self._server.send_command(self._server.clients[target].stream, cmd, target, target)
+                await self._server.send_command(self._server.clients[target].stream, cmd, target)
                 await trio.sleep(2)
             return self._server.clients[target].cmd_result
         else:

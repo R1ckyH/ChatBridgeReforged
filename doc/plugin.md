@@ -52,6 +52,7 @@ It also has these following functions:
 |---|---|
 | send_message(msg, target) | Send `msg` to `target` server |
 | tell_message(msg, target, player) | Send `msg` to `player` in `target` server |
+| reply(msg, MessageInfo) | replay `msg` to `MessageInfo` sender |
 | send_custom_message(target, msg, client, player) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
 | execute_command(command, targets) | Execute `command` in `target` server without waiting result |
 | execute_mcdr_command(command, targets) | Execute `mcdr` `command` in `target` server without waiting result **only work with command that starts with `!!` now** |

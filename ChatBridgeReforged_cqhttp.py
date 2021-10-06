@@ -27,7 +27,7 @@ timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_cqhttp',
-    'version': '0.0.1-Beta-015',
+    'version': '0.0.1-Beta-016',
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
@@ -115,7 +115,7 @@ class CBRLogger:
     def out_log(self, msg: str, error=False, debug=False, not_spam=False):
         for i in range(6):
             msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '')
+        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if error:
             msg = heading + '[ERROR]: ' + msg
@@ -214,16 +214,17 @@ class Config:
 class CQClient(websocket.WebSocketApp):
     def __init__(self, config: Config, logger: CBRLogger, client_class: 'CBRTCPClient'):
         super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close, on_open=self.on_open)
+        self.ws_url = config.ws_url
         self.client = client_class
         self.logger = logger
         self.config = config
 
     def start(self):
         while True:
+            self.logger.info(f"Starting CQ services to {self.ws_url}")
             self.run_forever()
-            for i in range(5, 1, -1):
-                self.logger.error(f"Connection failed, reconnect after {i} second")
-                time.sleep(1)
+            self.logger.error(f"Connection failed, reconnect after {5} second")
+            time.sleep(5)
 
     def on_message(self, client_class, message):
         if not self.client.connected:
@@ -348,7 +349,7 @@ class ClientProcess:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2)
 
     def input_process(self, message):
-        if message == 'help':
+        if message == 'help' or message == '':
             for line in str(help_msg).splitlines():
                 self.client.logger.out_log(line)
         elif message == 'stop':
@@ -366,6 +367,7 @@ class ClientProcess:
             self.client.try_stop()
             time.sleep(0.1)
             self.client.try_start()
+            time.sleep(0.1)
             self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2)
         elif message == 'exit':
             exit(0)
@@ -398,6 +400,9 @@ class ClientProcess:
                 for i in msg['message'].splitlines():
                     message = message_formatter(msg['client'], msg['player'], i)
                     self.logger.print_msg(message, 0)
+                for i in range(6):
+                    msg['message'] = msg['message'].replace('§' + str(i), '').replace('§' + chr(97 + i), '')
+                msg['message'] = msg['message'].replace('§6', '').replace('§7', '').replace('§8', '').replace('§9','')
                 message = message_formatter(msg['client'], msg['player'], msg['message'])
                 CQ_bot.send_text(message, group_id=self.client.config.react_group)
             elif msg['action'] == 'stop':
@@ -589,7 +594,6 @@ def main():
     client = CBRTCPClient(config, logger)
     logger.load(client)
     client.try_start()
-    logger.info("Starting CQ services")
     CQ_bot = CQClient(config, logger, client)
     threading.Thread(target=auto_restart, name="auto_restart", daemon=True).start()
     threading.Thread(target=CQ_bot.start, name="CQHTTP", daemon=True).start()

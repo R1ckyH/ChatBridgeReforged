@@ -58,9 +58,9 @@ class Network(NetworkBase):
         msg = self.formatter.login_formatter(success)
         await self.send_msg(stream, msg, target)
 
-    async def send_command(self, stream: trio.SocketStream, cmd, receiver, target=''):
-        msg = self.formatter.command_formatter(cmd, receiver)
-        await self.send_msg(stream, msg, target)
+    async def send_command(self, stream: trio.SocketStream, cmd, target_client):
+        msg = self.formatter.command_formatter(cmd, target_client)
+        await self.send_msg(stream, msg, target_client)
 
     async def send_message(self, stream: trio.SocketStream, client, player, message, receiver='', target=''):
         msg = self.formatter.message_formatter(client, player, message, receiver)

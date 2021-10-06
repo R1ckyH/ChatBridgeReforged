@@ -11,7 +11,7 @@ class AESCryptor:
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """
-    def __init__(self, key, logger: CBRLogger, mode=AES.MODE_CBC):
+    def __init__(self, key, logger: CBRLogger, mode=AES.MODE_CBC):  # TODO: EDIT encrypt to fuck gpl(now)
         self.key = self.__to16length(key)
         self.logger = logger
         self.mode = mode
