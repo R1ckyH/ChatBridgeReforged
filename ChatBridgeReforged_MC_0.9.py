@@ -5,6 +5,7 @@ import struct
 import threading
 import time
 import traceback
+import zipfile
 
 from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
@@ -21,13 +22,18 @@ client: 'CBRTCPClient'
 debug_mode = False
 CONFIG_PATH = 'config/ChatBridgeReforged_MC.json'
 LOG_PATH = 'logs/ChatBridgeReforged_MC.log'
+CHAT_PATH = 'logs/ChatBridgeReforged_MC_chat.log'
+SIZE_TO_ZIP = 512  # kb
+SIZE_TO_ZIP_CHAT = 512  # kb
+DISABLE_CHAT_LOG = False
+SPLIT_CHAT_LOG = False
 client_color = '6'  # minecraft color code
 ping_time = 60
 timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.0.1-Beta-016',
+    'version': '0.0.1-RC-dev017',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -90,12 +96,17 @@ class CBRLogger:
     def __init__(self):
         self._debug_mode = False
         self.log_path = ''
+        self.chat_path = ''
         self.client = None
 
     def load(self, client_class=None):
         self.client: CBRTCPClient = client_class
         self._debug_mode = debug_mode
         self.log_path = LOG_PATH
+        self.chat_path = CHAT_PATH
+        compressor = Compressor(self)
+        compressor.zip_log(self.log_path, SIZE_TO_ZIP)
+        compressor.zip_log(self.chat_path, SIZE_TO_ZIP_CHAT)
 
     def info(self, msg):
         self.out_log(msg)
@@ -103,15 +114,27 @@ class CBRLogger:
     def error(self, msg):
         self.out_log(msg, error=True)
 
+    def chat(self, msg):
+        if not DISABLE_CHAT_LOG:
+            self.out_log(msg, error=True, chat=True)
+
     def debug(self, msg):
         self.out_log(msg, debug=True)
 
-    def out_log(self, msg: str, error=False, debug=False, not_spam=False):
+    def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
         for i in range(6):
             msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
         msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
-        if error:
+        if chat:
+            msg = heading + '[CHAT]: ' + msg
+            if SPLIT_CHAT_LOG:
+                if self.chat_path != '':
+                    print(msg + '\n', end='')
+                    with open(self.chat_path, 'a+', encoding='utf-8') as log:
+                        log.write(msg + '\n')
+                return
+        elif error:
             msg = heading + '[ERROR]: ' + msg
         elif debug:
             if not self._debug_mode:
@@ -133,7 +156,7 @@ class CBRLogger:
             else:
                 self.debug(line)
 
-    def print_msg(self, msg, num, info=None, server=None, player='', error=False, debug=False, not_spam=False):
+    def print_msg(self, msg, num, info=None, server=None, player='', error=False, debug=False, not_spam=False, chat=False):
         if num == 0:
             if self.client.server is not None:
                 if server is not None:
@@ -143,7 +166,7 @@ class CBRLogger:
                         server.tell(player, msg)
             else:
                 not_spam = False
-            self.out_log(str(msg), not_spam=not_spam)
+            self.out_log(str(msg), not_spam=not_spam, chat=chat)
         elif num == 1:
             server.reply(info, msg)
             self.info(str(msg))
@@ -206,6 +229,30 @@ class Config:
 
     def init_all_config(self):
         self.init_config()
+
+
+class Compressor:
+    def __init__(self, logger: 'CBRLogger'):
+        self.logger = logger
+
+    def zip_log(self, file_path, max_size):
+        self.logger.debug(f"Start zip file: '{os.path.basename(file_path)}'")
+        if os.path.isfile(file_path):
+            file_size = (os.path.getsize(file_path)/1024)
+            if file_size > max_size:
+                if file_path == CHAT_PATH:
+                    zip_name = 'logs/CBR_chat'
+                else:
+                    zip_name = 'logs/CBR_'
+                zip_name += time.strftime('%Y-%m-%d_%H%M%S', time.localtime(os.path.getmtime(file_path))) + '.zip'
+                with zipfile.ZipFile(zip_name, 'w') as zipper:
+                    zipper.write(file_path, arcname=os.path.basename(file_path), compress_type=zipfile.ZIP_DEFLATED)
+                    os.remove(file_path)
+                self.logger.debug("zipped old file")
+            else:
+                self.logger.debug("Not enough size to zip")
+        else:
+            self.logger.debug("Nothing to zip")
 
 
 class AESCryptor:
@@ -382,9 +429,9 @@ class ClientProcess:
                             except Exception:
                                 msg['result']['type'] = 3
                                 self.logger.bug_log(error=True)
-                                return
-                            msg['result']['type'] = 0
-                            msg['result']['result'] = result
+                            else:
+                                msg['result']['type'] = 0
+                                msg['result']['result'] = result
                 else:
                     msg['result']['type'] = 3
                 self.client.send_msg(socket, json.dumps(msg))

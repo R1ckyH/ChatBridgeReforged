@@ -37,7 +37,7 @@ It has the following variables:
 |---|---|---|
 | logger | modified `CBRLogger` with only `info`, `error`, `warning` and `debug` | A logger of CBR. It is better to use `server.logger.info (message)` instead of `print (message)` to output information to the console. |
 | cbr_logger | CBRLogger(like `logging.Logger`) | A logger of CBR like [logger](https://docs.python.org/3/library/logging.html#logger-objects)| |
-
+| logger.chat | CBRLogger | A new constant of cbr using to log chat message |
 It also has these following functions:
 
 **Server Control TODO in future**

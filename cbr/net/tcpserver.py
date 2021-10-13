@@ -1,5 +1,4 @@
 import json
-import os
 import trio
 
 from functools import partial
@@ -58,7 +57,7 @@ class CBRTCPServer(Network):
         try:
             await trio.serve_tcp(self.handle_echo, self.port, host=self.ip)
         except OSError:
-            self.logger.bug(exit_now=False, error=True)
+            self.logger.bug(error=False, exit_now=True)
             await self.stop()
 
     async def stop(self):
@@ -85,7 +84,6 @@ class CBRTCPServer(Network):
                 self.logger.info(f"Closed connection to {i}")
 
     async def main(self):
-        self.logger.info(f'Server starting at pid {os.getpid()}')
         try:
             await self.plugin_manager.reload_all_plugins()
             async with trio.open_nursery() as self.nursery:
@@ -102,7 +100,7 @@ class CBRTCPServer(Network):
         try:
             address = stream.socket.getpeername()
         except Exception:
-            self.logger.bug(False, True)
+            self.logger.bug()
             self.logger.critical("Error in get peer name")
             address = 'ERROR ADDRESS'
         self.logger.debug(f"new session started from {address}", "CBR")
@@ -128,7 +126,7 @@ class CBRTCPServer(Network):
                     self.logger.debug(f"Cancel Process to {client_process.current_client}", "CBR")
                     break
                 except Exception:
-                    self.logger.bug(exit_now=False, error=True)
+                    self.logger.bug()
                     if client_process.current_client != '':
                         self.logger.info(f'Closed Process to {client_process.current_client}')
                     break
@@ -143,7 +141,7 @@ class CBRTCPServer(Network):
         except Exception:
             await self.send_stop(stream)
             self.logger.info(f"Failed decode message from {address}")
-            self.logger.bug(exit_now=False)
+            self.logger.bug(error=False)
             await stream.aclose()
             return
         await client_process.process_msg(msg, stream, address, nursery)
@@ -157,7 +155,7 @@ class CBRTCPServer(Network):
             try:
                 trio.from_thread.run(self.process.msg_process, msg, self.nursery)
             except Exception:
-                self.logger.bug(exit_now=False, error=True)
+                self.logger.bug()
 
     def get_register_help_msg(self):
         msg = ''

@@ -9,10 +9,12 @@ from ruamel import yaml
 from typing import TYPE_CHECKING
 # from ruamel.yaml.comments import CommentedMap
 
+from cbr.lib.zip import Compressor
+
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = '0.0.1-Beta-016'
+CHATBRIDGEREFORGED_VERSION = '0.0.1-RC-dev017'
 LIB_VERSION = "v20210915"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
@@ -31,7 +33,14 @@ CONFIG_STRUCTURE = [
          {'name': 'plugin', },
      ]
      },
-    {'name': 'clients', }
+    {'name': 'clients', },
+    {'name': 'log',
+     'sub_structure': [
+         {'name': 'size_to_zip', },
+         {'name': 'split_log', },
+         {'name': 'size_to_zip_chat', },
+     ]
+     }
 ]
 
 
@@ -40,7 +49,6 @@ class ConfigChecker:
         self.logger = logger
 
     def check_all(self):
-        self.logger.info("Checking config ......")
         if not path.exists('config'):
             os.mkdir('config')
         if not path.exists('plugins'):
@@ -54,8 +62,18 @@ class ConfigChecker:
             try:
                 self.logger.debug_config = data['debug']
                 self.logger.debug_all = self.logger.debug_config['all']
+                logs_data = data['log']
+                split_log = logs_data['split_log']
+                compressor = Compressor(self.logger)
+                compressor.zip_log('latest.log', logs_data['size_to_zip'])
+                self.logger.setup(split_log=split_log)
+                if split_log:
+                    compressor.zip_log('chat.log', logs_data['size_to_zip_chat'])
+                    self.logger.setup(True)
             except KeyError:
+                self.logger.setup()
                 raise ValueError('Some config is missing in config.yml')
+        self.logger.debug("Checking config ......", "CBR")
         self.__check_config_info(data)
         return data
 
@@ -73,9 +91,10 @@ class ConfigChecker:
     def __check_config_info(self, data):
         self.logger.debug('Checking config.yml', "CBR")
         if not self.__check_node(data, CONFIG_STRUCTURE):
+            self.logger.setup()
             raise ValueError('Some config is missing in config.yml')
         else:
-            self.logger.info('Finish config check')
+            self.logger.debug('Finish config check', "CBR")
 
     def __check_node(self, data, structure):
         check_node_result = True
@@ -129,6 +148,7 @@ class Config:
     def init_config(self, logger: 'CBRLogger'):
         self.logger = logger
         self.config_checker = ConfigChecker(self.logger)
-        self.logger.info(f'version : {self.version}, lib version : {self.lib_version}')
         self.raw_data = self.config_checker.check_all()
         self.__init_data()
+        self.logger.info(f"CBR is now starting at pid {os.getpid()}")
+        self.logger.info(f'version : {self.version}, lib version : {self.lib_version}')

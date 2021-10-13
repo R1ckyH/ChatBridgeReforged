@@ -4,6 +4,8 @@ from datetime import datetime
 from mcdreforged.api.all import *
 from typing import TYPE_CHECKING
 
+from chatbridgereforged_mc.lib.zip import Compressor
+
 if TYPE_CHECKING:
     from chatbridgereforged_mc.lib.config import Config
     from chatbridgereforged_mc.net.tcpclient import CBRTCPClient
@@ -13,12 +15,19 @@ class CBRLogger:
     def __init__(self):
         self._debug_mode = False
         self.log_path = ''
+        self.chat_path = ''
         self.client = None
+        self.config = None
 
     def load(self, config: 'Config', client_class=None):
+        self.config: 'Config' = config
         self.client: 'CBRTCPClient' = client_class
         self._debug_mode = config.debug_mode
         self.log_path = config.log_path
+        self.chat_path = config.chat_path
+        compressor = Compressor(self, config)
+        compressor.zip_log(self.log_path, config.size_to_zip)
+        compressor.zip_log(self.chat_path, config.size_to_zip_path)
 
     def info(self, msg):
         self.out_log(msg)
@@ -26,15 +35,27 @@ class CBRLogger:
     def error(self, msg):
         self.out_log(msg, error=True)
 
+    def chat(self, msg):
+        if not self.config.disable_chat_log:
+            self.out_log(msg, error=True, chat=True)
+
     def debug(self, msg):
         self.out_log(msg, debug=True)
 
-    def out_log(self, msg: str, error=False, debug=False, not_spam=False):
+    def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
         for i in range(6):
             msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
         msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
-        if error:
+        if chat:
+            msg = heading + '[CHAT]: ' + msg
+            if self.config.split_chat_log:
+                if self.chat_path != '':
+                    print(msg + '\n', end='')
+                    with open(self.chat_path, 'a+', encoding='utf-8') as log:
+                        log.write(msg + '\n')
+                return
+        elif error:
             msg = heading + '[ERROR]: ' + msg
         elif debug:
             if not self._debug_mode:
@@ -56,7 +77,7 @@ class CBRLogger:
             else:
                 self.debug(line)
 
-    def print_msg(self, msg, num, info=None, server: ServerInterface = None, player='', error=False, debug=False, not_spam=False):
+    def print_msg(self, msg, num, info=None, server: ServerInterface = None, player='', error=False, debug=False, not_spam=False, chat=False):
         if num == 0:
             if self.client.server is not None:
                 if server is not None:
@@ -66,7 +87,7 @@ class CBRLogger:
                         server.tell(player, msg)
             else:
                 not_spam = False
-            self.out_log(str(msg), not_spam=not_spam)
+            self.out_log(str(msg), not_spam=not_spam, chat=chat)
         elif num == 1:
             server.reply(info, msg)
             self.info(str(msg))

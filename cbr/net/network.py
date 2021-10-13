@@ -24,7 +24,7 @@ class NetworkBase(AESCryptor):
             msg = str(msg, encoding='utf-8')
             msg = self.decrypt(msg)
         except Exception:
-            self.logger.bug(exit_now=False)
+            self.logger.bug(error=False)
             return '{}'
         self.logger.debug(f"Received {msg!r} from {address!r}", "CBR")
         return msg
@@ -46,8 +46,6 @@ class NetworkBase(AESCryptor):
 class Network(NetworkBase):
     def __init__(self, logger: CBRLogger, key, clients):
         super().__init__(logger, key, clients)
-        self.logger = logger
-        self.clients = clients
         self.formatter = formatter
 
     async def send_ping(self, stream: trio.SocketStream, pong=False, target=''):

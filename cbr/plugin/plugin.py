@@ -28,7 +28,7 @@ class Plugin:
             self.instance = importlib.util.module_from_spec(self.spec)
             self.spec.loader.exec_module(self.instance)
         except Exception as e:
-            self.logger.bug(exit_now=False, error=True)
+            self.logger.bug()
             raise e
         self.setup()  # TODO: CBRInterface in plugin?(considering)
 
@@ -56,7 +56,7 @@ class Plugin:
         try:
             self.spec.loader.exec_module(self.instance)
         except Exception as e:
-            self.logger.bug(exit_now=False, error=True)
+            self.logger.bug()
             raise e
         self.last_edit_time = os.path.getmtime(self.path_name)
         self.setup()
@@ -245,7 +245,7 @@ class PluginManager:
             for j in cache_list:
                 name = os.path.basename(j)
                 if i == name:
-                    self.logger.debug(f"Check reload of {i}")
+                    self.logger.debug(f"Check reload of {i}", "plugin")
                     cache_list.remove(j)
                     cache_plugin.remove(i)
                     if await self.__load_plugin(j, name):
@@ -268,7 +268,7 @@ class PluginManager:
 
     async def run_event(self, event, *args, wait_time=1, nursery=None):
         if nursery is None:
-            self.logger.debug("no nursery exist, spawn nursery now")
+            self.logger.debug("no nursery exist, spawn nursery now", "CBR")
             async with trio.open_nursery() as nursery:
                 await self.event_manager.run_event(event, wait_time, nursery, *args)
         else:
@@ -276,7 +276,7 @@ class PluginManager:
 
     async def plugin_run_event(self, event, plg_id, *args, wait_sec=1, nursery=None):
         if nursery is None:
-            self.logger.debug("no nursery exist, spawn nursery now")
+            self.logger.debug("no nursery exist, spawn nursery now", "CBR")
             async with trio.open_nursery() as nursery:
                 await self.event_manager.plugin_run_event(event, plg_id, nursery, *args, wait_time=wait_sec)
         else:

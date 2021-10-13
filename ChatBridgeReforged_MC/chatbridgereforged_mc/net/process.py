@@ -149,9 +149,9 @@ class ClientProcess:
                             except Exception:
                                 msg['result']['type'] = 3
                                 self.logger.bug_log(error=True)
-                                return
-                            msg['result']['type'] = 0
-                            msg['result']['result'] = result
+                            else:
+                                msg['result']['type'] = 0
+                                msg['result']['result'] = result
                 else:
                     msg['result']['type'] = 3
                 self.client.send_msg(socket, json.dumps(msg))

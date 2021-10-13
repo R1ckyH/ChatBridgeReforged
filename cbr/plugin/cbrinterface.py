@@ -22,6 +22,10 @@ class CBRInterfaceLogger:
         self.__token = token
         self.__formatter = formatter
 
+    def chat(self, msg):
+        msg = self.__formatter.no_color_formatter(msg)
+        trio.from_thread.run_sync(self.__logger.chat, msg, trio_token=self.__token)
+
     def info(self, msg):
         msg = self.__formatter.no_color_formatter(msg)
         trio.from_thread.run_sync(self.__logger.info, msg, trio_token=self.__token)
@@ -113,8 +117,7 @@ class CBRInterface:
             self.logger.error("Server closed, not allow to send anything")
             return
         if target == "CBR":
-            for i in msg.splitlines():
-                self.logger.info('- ' + i)
+            self.__split_msg(msg)
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
@@ -131,11 +134,7 @@ class CBRInterface:
             self.logger.error("Server closed, not allow to send anything")
             return
         if info.source_client == "CBR":
-            for i in msg.splitlines():
-                if self.__current_plugin_id == "ChatBridgeReforged":
-                    self.logger.info(i)
-                else:
-                    self.logger.info('- ' + i)
+            self.__split_msg(msg)
             return
         target = info.source_client
         receiver = info.sender
@@ -153,8 +152,7 @@ class CBRInterface:
             self.logger.error("Server closed, not allow to send anything")
             return
         if target == "CBR":
-            for i in msg.splitlines():
-                self.logger.info('- ' + i)
+            self.__split_msg(msg)
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
@@ -169,8 +167,7 @@ class CBRInterface:
         if not self.__running():
             return
         if target == "CBR":
-            for i in msg.splitlines():
-                self.logger.info('- ' + i)
+            self.__split_msg(msg)
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
@@ -267,6 +264,13 @@ class CBRInterface:
             return True
         else:
             return False
+
+    def __split_msg(self, msg):
+        for i in msg.splitlines():
+            if self.__current_plugin_id == "ChatBridgeReforged":
+                self.logger.chat(i)
+            else:
+                self.logger.chat('- ' + i)
 
     async def __wait_api_result(self, target, plugin_id, function_name, keys):
         with trio.move_on_after(2) as self._server.clients[target].cmd_lock:

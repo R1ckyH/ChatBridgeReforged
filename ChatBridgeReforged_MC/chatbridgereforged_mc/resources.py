@@ -6,7 +6,7 @@ from chatbridgereforged_mc.utils import *
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-VERSION = '0.0.1-Beta-016'
+VERSION = '0.0.1-RC-dev017'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 
@@ -16,9 +16,14 @@ DEFAULT_ADVANCED_CONFIG = {
     "debug_mode": False,
     "config_path": "config/ChatBridgeReforged_MC.json",
     "log_path": "logs/ChatBridgeReforged_MC.log",
+    'chat_path': "logs/ChatBridgeReforged_MC_chat.log",
     "client_color": "6",
     "ping_time": 60,
-    "timeout": 120
+    "timeout": 120,
+    "size_to_zip": 512,  # kb
+    "size_to_zip_chat": 512,  # kb
+    "disable_chat_log": False,
+    "split_chat_log": False
 }
 
 DEFAULT_CONFIG = {

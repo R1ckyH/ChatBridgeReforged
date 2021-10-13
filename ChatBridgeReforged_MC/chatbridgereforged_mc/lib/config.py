@@ -15,9 +15,14 @@ class AdvancedConfig:
         self.debug_mode = DEFAULT_ADVANCED_CONFIG['debug_mode']
         self.config_path = DEFAULT_ADVANCED_CONFIG['config_path']
         self.log_path = DEFAULT_ADVANCED_CONFIG['log_path']
+        self.chat_path = DEFAULT_ADVANCED_CONFIG['chat_path']
         self.client_color = DEFAULT_ADVANCED_CONFIG['client_color']
         self.ping_time = DEFAULT_ADVANCED_CONFIG['ping_time']
         self.timeout = DEFAULT_ADVANCED_CONFIG['timeout']
+        self.size_to_zip = DEFAULT_ADVANCED_CONFIG['size_to_zip']
+        self.size_to_zip_path = DEFAULT_ADVANCED_CONFIG['size_to_zip_chat']
+        self.disable_chat_log = DEFAULT_ADVANCED_CONFIG['disable_chat_log']
+        self.split_chat_log = DEFAULT_ADVANCED_CONFIG['split_chat_log']
 
     def load_advanced_config(self):
         if self.server is not None:
@@ -40,13 +45,18 @@ class AdvancedConfig:
         self.debug_mode = config_dict['debug_mode']
         self.config_path = config_dict['config_path']
         self.log_path = config_dict['log_path']
+        self.chat_path = config_dict['chat_path']
         self.client_color = config_dict['client_color']
         self.ping_time = config_dict['ping_time']
         self.timeout = config_dict['timeout']
+        self.size_to_zip = config_dict['size_to_zip']
+        self.size_to_zip_path = config_dict['size_to_zip_chat']
+        self.disable_chat_log = config_dict['disable_chat_log']
+        self.split_chat_log = config_dict['split_chat_log']
 
 
 class Config(AdvancedConfig):
-    def __init__(self, logger: CBRLogger, server=None):
+    def __init__(self, logger: 'CBRLogger', server=None):
         super().__init__(logger, server)
         self.logger = logger
         self.server: PluginServerInterface = server

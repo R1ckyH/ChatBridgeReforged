@@ -45,6 +45,15 @@ use `##CBR` to get help command
 | password | `string`| password of client |
 | config | data type | description |
 
+### log
+`Dict`
+
+| config | data type | description |
+|----|----|----|
+| size_to_zip | `double` | size to zip the file `latest.log`(kb) |
+| split_log | `bool` | split log to chat log and normal log |
+| size_to_zip_chat | `bool` | size to zip the file `chat.log`(kb) |
+
 ### debug
 `Dict`
 

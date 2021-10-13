@@ -14,13 +14,22 @@ class MessageInfo:
         self._send_to_servers = True
 
     def is_send_message(self):
+        """
+            check msg cancel send to server or not
+        """
         return self._send_to_servers
 
     def cancel_send_message(self):
+        """
+            cancel message send to server
+        """
         self._send_to_servers = False
         self._logger.debug(f"Cancel to send out {self.content}", module='plugin')
 
     def should_send_message(self):
+        """
+            enable message send to server
+        """
         self._send_to_servers = True
         self._logger.debug(f"Continue to send out {self.content}", module='plugin')
 

@@ -61,7 +61,7 @@ class PluginEvent:
         try:
             run_plugin(server_interface, *args)
         except Exception:
-            self.logger.bug(exit_now=False, error=True)
+            self.logger.bug()
         trio.from_thread.run_sync(cancel_scope.cancel)
 
 

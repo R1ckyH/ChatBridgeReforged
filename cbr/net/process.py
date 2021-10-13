@@ -120,7 +120,7 @@ class Process:
             if event == 'on_message':
                 if info.is_send_message():
                     await self.msg_mc_server(self.formatter.message_formatter(client, player, msg), current_client)
-                    self.logger.info(message)
+                    self.logger.chat(message)
             else:
                 if info.is_send_message():
                     return False

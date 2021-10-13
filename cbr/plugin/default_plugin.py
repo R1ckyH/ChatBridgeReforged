@@ -8,6 +8,7 @@ from cbr.lib.config import CHATBRIDGEREFORGED_VERSION
 from cbr.plugin.info import MessageInfo
 from cbr.plugin.cbrinterface import CBRInterface
 from cbr.net.process import ServerProcess
+from cbr.resources import formatter
 
 METADATA = {
     'id': 'ChatBridgeReforged',
@@ -19,16 +20,24 @@ METADATA = {
 }
 
 
-async def reply(msg, server: CBRInterface, info: MessageInfo):
-    await trio.to_thread.run_sync(server.reply, msg, info)
+async def reply(msg, server: CBRInterface, info: MessageInfo, chat=False):
+    if info.source_client == "CBR" and not chat:
+        msg = formatter.no_color_formatter(msg)
+        for i in msg.splitlines():
+            server._server.logger.info(i)
+    else:
+        await trio.to_thread.run_sync(server.reply, msg, info)
 
 
-def unknown_cmd(command=''):
+async def unknown_cmd(command, server: CBRInterface, info: MessageInfo):
     if command != '':
         command = ' ' + command
     command = '##CBR' + command
     msg = f"Unknown command, use {command} help for help message"
-    return msg
+    if info.source_client == "CBR":
+        server._server.logger.error(msg)
+    else:
+        await reply(msg, server, info, chat=True)
 
 
 def reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num):
@@ -49,12 +58,12 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
     args = msg.split(' ')
     length = len(args)
     if args[0] == 'help' or args[0] == '?' or args[0] == '':
-        await reply(self.get_help_msg(), server, info)
+        await reply(self.get_help_msg(), server, info, chat=True)
     elif args[0] == '##help':
-        await reply(self.server.get_register_help_msg(), server, info)
+        await reply(self.server.get_register_help_msg(), server, info, chat=True)
     elif args[0] == 'reload' or args[0] == 'r':
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('reload'), server, info)
+            await reply(self.get_help_msg('reload'), server, info, chat=True)
         elif args[1] == 'plugin' or args[1] == 'plg':
             load_plugin, unload_plugin, reloaded_plugin, num = await self.plugin_manager.check_reload_all_plugins()
             msg = reload_result(load_plugin, unload_plugin, reloaded_plugin, num)
@@ -68,33 +77,33 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
             msg = reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num)
             await reply(msg, server, info)
         else:
-            await reply(unknown_cmd('reload'), server, info)
+            await unknown_cmd('reload', server, info)
     elif args[0] == 'status':
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('status'), server, info)
+            await reply(self.get_help_msg('status'), server, info, chat=True)
         elif args[1] == 'online':
-            await reply(self.online_list(), server, info)
+            await reply(self.online_list(), server, info, chat=True)
         elif args[1] == 'CBR':
-            await reply(self.get_status(), server, info)
+            await reply(self.get_status(), server, info, chat=True)
         elif args[1] == 'ping':
             if length == 2:
                 message = await self.ping_all()
-                await reply('Ping clients:' + message, server, info)
+                await reply('Ping clients:' + message, server, info, chat=True)
             else:
                 if length > 2 and args[2] in self.server.clients.keys():
                     ping = await self.ping_test(args[2])
-                    await reply(self.ping_log(ping, args[2]), server, info)
+                    await reply(self.ping_log(ping, args[2]), server, info, chat=True)
                 else:
-                    await reply("Client not found", server, info)
+                    await reply("Client not found", server, info, chat=True)
         elif args[1] == 'all':
             msg = self.get_status()
             msg += f"{await self.ping_all()}"
-            await reply(msg, server, info)
+            await reply(msg, server, info, chat=True)
         else:
-            await reply(unknown_cmd('status'), server, info)
+            await unknown_cmd('status', server, info)
     elif args[0] == 'plugin' or args[0] == 'plg':
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('plugin'), server, info)
+            await reply(self.get_help_msg('plugin'), server, info, chat=True)
         elif args[1] == 'list':
             loaded_plugin = await self.plugin_manager.get_loaded_plugins()
             disabled_plugin = await self.plugin_manager.get_disable_plugins()
@@ -111,7 +120,7 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
             await reply(msg, server, info)
         elif args[1] == 'load' and length == 3:
             await reply(await self.plugin_manager.load_plugin(args[2]), server, info)
-        elif args[1] == 'reload' and length == 3:
+        elif (args[1] == 'reload' or args[1] == 'r') and length == 3:
             result = await self.plugin_manager.reload_plugin(args[2])
             if result is None:
                 await reply(f"Plugin {args[2]} not exist", server, info)
@@ -134,8 +143,10 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
                     await reply(f"Plugin ID: '{args[2]}' disabled", server, info)
                 else:
                     await reply(f"Plugin ID: '{args[2]}' Not exist", server, info)
+            else:
+                await unknown_cmd('plugin', server, info)
         else:
-            await reply(unknown_cmd('plugin'), server, info)
+            await unknown_cmd('plugin', server, info)
     elif command:
         if msg.startswith('say'):
             msg = msg.replace('say ', '')
@@ -173,13 +184,14 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
             else:
                 self.logger.force_debug()
         else:
-            self.logger.error(unknown_cmd())
+            return False
     else:
-        await reply(unknown_cmd(), server, info)
+        return False
+    info.cancel_send_message()
+    return True
 
 
 def run_process(server: CBRInterface, info: MessageInfo, command=False):
-    info.cancel_send_message()
     msg = info.content.replace("##CBR ", '').replace("##CBR", '')
     cbr_server = server._server
     process = cbr_server.process
@@ -192,6 +204,7 @@ def on_message(server: CBRInterface, info: MessageInfo):
     if info.content == '##help':
         server.reply(server._server.get_register_help_msg(), info)
     if info.content.startswith('##CBR') and info.client_type == 'mc':  # for some reason, only mc client can access now
+        info.cancel_send_message()
         run_process(server, info)
 
 

@@ -6,16 +6,29 @@ from os import path, mkdir
 
 from cbr.lib.config import Config
 
-log_file = 'logs'
-log_path = log_file + "/latest.log"
+LOG_FILE = 'logs'
+LOG_PATH = LOG_FILE + "/latest.log"
+CHAT_LOG_PATH = LOG_FILE + "/chat.log"
+
 
 logger_black_list = ['ping', 'Result of', '- ', 'Client ', 'Ping client', 'Send Command', 'Unknown ']  # File handler
 logger_black_arg2 = ['joined', 'left']  # File handler
 
 
 class StdoutFilter(logging.Filter):
+    def __init__(self, chat=False, split_log=True):
+        super().__init__()
+        self.chat = chat
+        self.split_log = split_log
+
     def filter(self, record: logging.LogRecord):
         msg = record.getMessage()
+        if self.split_log:
+            if self.chat:
+                if record.levelname != 'CHAT':
+                    return False
+            elif record.levelname == 'CHAT':
+                return False
         args = msg.split(' ')
         # print(record.levelname)
         if len(args) == 4:
@@ -25,35 +38,37 @@ class StdoutFilter(logging.Filter):
         for i in range(len(logger_black_list)):
             if msg.startswith(logger_black_list[i]):
                 return False
-        if record.funcName == 'help_msg':
-            return False
         return True
 
 
-# TODO: Advanced log(now?)
 class CBRLogger(logging.getLoggerClass()):
     def __init__(self, name, config: Config):
-        if not path.exists(log_file):
-            mkdir(log_file)
+        if not path.exists(LOG_FILE):
+            mkdir(LOG_FILE)
         super().__init__(name)
-        self.file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        self.file_handler = None
         self.stdout_handler = logging.StreamHandler(sys.stdout)
         self.debug_config = config.debug
+        self.stdout_handler.setFormatter(self.formatter('%H:%M:%S'))
+        self.addHandler(self.stdout_handler)
+        logging.addLevelName(21, "CHAT")
+        self.setLevel(logging.DEBUG)
 
     def formatter(self, date=None):
         return logging.Formatter('[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=date)
 
-    def setup(self):
-        if not path.exists(log_file):
-            mkdir(log_file)
-        self.stdout_handler.setFormatter(self.formatter('%H:%M:%S'))
-        self.file_handler.setFormatter(self.formatter('%Y-%m-%d %H:%M:%S'))
-        self.file_handler.addFilter(StdoutFilter())
-        self.addHandler(self.stdout_handler)
+    def setup(self, chat=False, split_log=True):
+        if chat:
+            path_name = CHAT_LOG_PATH
+        else:
+            path_name = LOG_PATH
+        self.file_handler = logging.FileHandler(path_name, encoding='utf-8')
+        self.file_handler.setFormatter(self.formatter('%d-%m-%Y %H:%M:%S'))
+        self.file_handler.addFilter(StdoutFilter(chat, split_log))
         self.addHandler(self.file_handler)
         self.setLevel(logging.DEBUG)
 
-    def bug(self, exit_now=True, error=False):  # TODO: better logger.bug(now)
+    def bug(self, error=True, exit_now=False):
         for line in traceback.format_exc().splitlines():
             if error:
                 self.error(line, exc_info=False)
@@ -64,10 +79,12 @@ class CBRLogger(logging.getLoggerClass()):
                 self.error('ERROR exist, use debug mode for more information')
             exit(0)
 
-    def debug(self, msg, module='all', *args) -> None:  # thx xd
+    def debug(self, msg, module='all', *args) -> None:
         if self.debug_config[module] or self.debug_config['all']:
             super().debug(msg, *args)
 
+    def chat(self, msg):
+        self.log(21, msg)
     # no use
     '''def restart_all(self):
         self.removeHandler(self.stdout_handler)

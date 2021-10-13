@@ -31,7 +31,7 @@ def list_player(server, info):
         players = {}
         results = server.servers_command_query('list', online_mc_client)
         if results is None:
-            server.tell_message("No information", info.source_client, info.sender)
+            server.reply("No information", info)
             return
         for i in results.keys():
             if results[i] is not None:
@@ -45,7 +45,7 @@ def list_player(server, info):
         message = "- Online players:"
         for i in range(len(online_mc_client)):
             message += f"\n[{online_mc_client[i]}]: {players[online_mc_client[i]]}"
-        server.tell_message(message, info.source_client, info.sender)
+        server.reply(message, info)
 
 
 def on_message(server: CBRInterface, info: MessageInfo):

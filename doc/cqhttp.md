@@ -18,6 +18,16 @@ setup it with websocket
 CBR cqhttp client is work as a websocket client
 
 Things you need to do
+- setup a qq bot like [go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
+
+
+- CBR client is a websocket client connect to cq bot
+
+
 - edit `host`, `port`, and `access-token` in cqhttp's config
+
+
 - edit the `config` of CBR `ChatBridgeReforged_cqhttp.py`.
+
+
 - edit the `config/cqhttp.json` of CBR plugin `cqhttp.py`.

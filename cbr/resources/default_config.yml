@@ -1,6 +1,6 @@
 # Configure file for ChatBridgeReforged
-# Check xxx for detail
-# Don't be Surprised, I just copy from MCDR
+# Check https://github.com/rickyhoho/ChatBridgeReforged for detail
+# Don't be Surprised, I just edit from [MCDR](https://github.com/Fallen-Breath/MCDReforged)
 
 
 # =========================================
@@ -33,6 +33,17 @@ clients:
 # =========================================
 # |           Advance Configure           |
 # =========================================
+
+
+# Debug mode switches
+# Size(kb) that CBR zip the logs after the logger files more than 'size_to_zip' (default 1024)
+# set to 0 to create zip everytime when CBR start
+# When start up, CBR will zip the log if necessary
+# split log is split the log into latest.log and chat.log (chat including the log of plugin output to console)
+log:
+  size_to_zip: 1024
+  split_log: true
+  size_to_zip_chat: 1024
 
 
 # Debug mode switches
