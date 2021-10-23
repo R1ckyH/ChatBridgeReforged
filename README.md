@@ -14,7 +14,7 @@
 - more feature will be release in the future
 - support to [ChatBridge](https://github.com/TISUnion/ChatBridge) `version` < `2.0` clients so far
   - Some function in ChatBridge will not be supported
-- [Ricky](https://github.com/rickyhoho) is a suck author
+- [Ricky](https://github.com/R1ckyH) is a suck author
   - But he will try his best to maintain this repository
   - Please cheer him so that he will be happy to maintain this repository
 
@@ -65,10 +65,10 @@ use `##CBR` to get help command
 
 ## cqhttp
 
-[cqhttp document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/cqhttp.md)
+[cqhttp document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/cqhttp.md)
 
 ## Plugin
 
-[Plugin document](https://github.com/rickyhoho/ChatBridgeReforged/tree/master/doc/plugin.md)
+[Plugin document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/plugin.md)
 
 Plugin Catalogue will launch after release

@@ -10,7 +10,7 @@ METADATA = {
     'name': 'cqhttp',
     'description': 'communicate with cqhttp',
     'author': 'Ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
+    'link': 'https://github.com/R1ckyH/ChatBridgeReforged'
 }
 
 DEFAULT_CONFIG = {

@@ -37,7 +37,7 @@ PLUGIN_METADATA = {
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged',
+    'link': 'https://github.com/R1ckyH/ChatBridgeReforged',
     'dependencies': {
         'mcdreforged': '>=1.3.0'
     }

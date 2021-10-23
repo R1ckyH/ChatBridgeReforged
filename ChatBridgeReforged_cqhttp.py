@@ -38,7 +38,7 @@ PLUGIN_METADATA = {
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
+    'link': 'https://github.com/R1ckyH/ChatBridgeReforged'
 }
 
 DEFAULT_CONFIG = {

@@ -10,7 +10,7 @@ METADATA = {
     'name': 'not_sample_plugin_xd',
     'description': '##list, it is not a sample plugin',
     'author': 'Ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
+    'link': 'https://github.com/R1ckyH/ChatBridgeReforged'
 }
 
 

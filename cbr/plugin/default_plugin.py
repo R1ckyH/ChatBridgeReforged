@@ -16,7 +16,7 @@ METADATA = {
     'name': 'ChatBridgeReforged',
     'description': 'The core of CBR',
     'author': 'Ricky',
-    'link': 'https://github.com/rickyhoho/ChatBridgeReforged'
+    'link': 'https://github.com/R1ckyH/ChatBridgeReforged'
 }
 
 
