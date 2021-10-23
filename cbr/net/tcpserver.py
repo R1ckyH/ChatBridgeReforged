@@ -57,7 +57,7 @@ class CBRTCPServer(Network):
         try:
             await trio.serve_tcp(self.handle_echo, self.port, host=self.ip)
         except OSError:
-            self.logger.bug(error=False, exit_now=True)
+            self.logger.bug(exit_now=True)
             await self.stop()
 
     async def stop(self):

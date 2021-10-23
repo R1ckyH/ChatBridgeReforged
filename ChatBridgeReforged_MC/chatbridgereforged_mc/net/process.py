@@ -53,6 +53,7 @@ class ClientProcess:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
     def input_process(self, message, server: PluginServerInterface = None, info=None):
+        message = message.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
         if message == 'help' or message == '':
             if server is not None and info is not None:
                 server.reply(info, help_msg)

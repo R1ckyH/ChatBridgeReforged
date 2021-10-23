@@ -31,10 +31,11 @@ SPLIT_CHAT_LOG = False
 client_color = '6'  # minecraft color code
 ping_time = 60
 timeout = 120
+wait_time = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_cqhttp',
-    'version': '0.0.1-RC-dev017',
+    'version': '0.0.1-RC2-dev018',
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
@@ -267,12 +268,17 @@ class CQClient(websocket.WebSocketApp):
         self.logger = logger
         self.config = config
 
+    def wait_start(self, waiting_time):
+        self.logger.info(f"Starting CQ services to {self.ws_url}")
+        self.run_forever()
+        self.logger.error(f"Connection failed to qq, reconnect after {waiting_time} second")
+        time.sleep(waiting_time)
+
     def start(self):
+        for i in wait_time:
+            self.wait_start(i)
         while True:
-            self.logger.info(f"Starting CQ services to {self.ws_url}")
-            self.run_forever()
-            self.logger.error(f"Connection failed, reconnect after {5} second")
-            time.sleep(5)
+            self.wait_start(3600)
 
     def on_message(self, client_class, message):
         if not self.client.connected:
@@ -299,21 +305,28 @@ class CQClient(websocket.WebSocketApp):
 
     def on_close(self, client_class, close_code, close_msg):
         self.logger.info(f"Close connection with code : {close_code}")
-        self.logger.info(f"Close message : {close_msg}")
+        self.logger.debug(f"Close message : {close_msg}")
 
-    def send_text(self, text, group_id):  # copy from [ChatBridge](https://github.com/TISUnion/ChatBridge)
+    def send_msg(self, msg, group_id):
+        message = qq_msg_formatter(msg, group_id)
+        self.logger.debug(f"Send: {message} to cq")
+        try:
+            self.send(message)
+        except Exception:
+            self.logger.error("Fail to send message to qq")
+
+    def send_text(self, text, group_id):
         msg = ''
         length = 0
         lines = text.rstrip().splitlines(keepends=True)
-        for i in range(len(lines)):
-            msg += lines[i]
-            length += len(lines[i])
-            if i == len(lines) - 1 or length + len(lines[i + 1]) > 500:
-                message = qq_msg_formatter(msg, group_id)
-                self.logger.debug(f"Send: {message} to cq")
-                self.send(message)
+        for i in lines:
+            if length > 500:
+                self.send_msg(msg, group_id)
                 msg = ''
                 length = 0
+            msg += i
+            length += len(i)
+        self.send_msg(msg, group_id)
 
 
 class AESCryptor:
@@ -397,6 +410,7 @@ class ClientProcess:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2)
 
     def input_process(self, message):
+        message = message.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
         if message == 'help' or message == '':
             for line in str(help_msg).splitlines():
                 self.client.logger.out_log(line)
@@ -627,11 +641,29 @@ class CBRTCPClient(Network):
         self.connected = False
 
 
+def wait_restart():
+    for i in wait_time:
+        time.sleep(i)
+        if not client.connected:
+            # self.logger.error(f"Connection failed, reconnect after {waiting_time} second")
+            client.try_start(True)
+        else:
+            return
+    while True:
+        if not client.connected:
+            time.sleep(3600)
+            client.try_start(True)
+        else:
+            return
+
+
 def auto_restart():
     while True:
-        time.sleep(5)
-        if not client.connected:
-            client.try_start(True)
+        wait_restart()
+        '''while True:
+            time.sleep(5)
+            if not client.connected:
+                client.try_start(True)'''
 
 
 def main():

@@ -33,7 +33,7 @@ timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.0.1-RC-dev017',
+    'version': '0.0.1-RC2-dev018',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -336,6 +336,7 @@ class ClientProcess:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
     def input_process(self, message, server: ServerInterface = None, info=None):
+        message = message.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
         if message == 'help' or message == '':
             if server is not None and info is not None:
                 server.reply(info, help_msg)
