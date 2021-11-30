@@ -1,5 +1,8 @@
 """
     Default CBR plugin
+    ##################
+    Don't imitate it
+    ##################
 """
 import threading
 import trio
@@ -20,13 +23,13 @@ METADATA = {
 }
 
 
-async def reply(msg, server: CBRInterface, info: MessageInfo, chat=False):
+async def reply(server: CBRInterface, info: MessageInfo, msg, chat=False):
     if info.source_client == "CBR" and not chat:
         msg = formatter.no_color_formatter(msg)
         for i in msg.splitlines():
             server._server.logger.info(i)
     else:
-        await trio.to_thread.run_sync(server.reply, msg, info)
+        await trio.to_thread.run_sync(server.reply, info, msg)
 
 
 async def unknown_cmd(command, server: CBRInterface, info: MessageInfo):
@@ -37,7 +40,7 @@ async def unknown_cmd(command, server: CBRInterface, info: MessageInfo):
     if info.source_client == "CBR":
         server._server.logger.error(msg)
     else:
-        await reply(msg, server, info, chat=True)
+        await reply(server, info, msg, chat=True)
 
 
 def reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num):
@@ -58,16 +61,16 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
     args = msg.split(' ')
     length = len(args)
     if args[0] == 'help' or args[0] == '?' or args[0] == '':
-        await reply(self.get_help_msg(), server, info, chat=True)
+        await reply(server, info, self.get_help_msg(), chat=True)
     elif args[0] == '##help':
-        await reply(self.server.get_register_help_msg(), server, info, chat=True)
+        await reply(server, info, self.server.get_register_help_msg(), chat=True)
     elif args[0] == 'reload' or args[0] == 'r':
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('reload'), server, info, chat=True)
+            await reply(server, info, self.get_help_msg('reload'), chat=True)
         elif args[1] == 'plugin' or args[1] == 'plg':
             load_plugin, unload_plugin, reloaded_plugin, num = await self.plugin_manager.check_reload_all_plugins()
             msg = reload_result(load_plugin, unload_plugin, reloaded_plugin, num)
-            await reply(msg, server, info)
+            await reply(server, info, msg)
         elif (args[1] == 'config' or args[1] == 'conf') and False:
             pass  # TODO reload config(next version)?
             # self.server.config.init_config(self.logger)
@@ -75,35 +78,35 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
         elif args[1] == 'all':
             loaded_plugin, unloaded_plugin, reloaded_plugin, num = await self.plugin_manager.check_reload_all_plugins()
             msg = reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num)
-            await reply(msg, server, info)
+            await reply(server, info, msg)
         else:
             await unknown_cmd('reload', server, info)
-    elif args[0] == 'status':
+    elif args[0] == 'status' or args[0] == "stat":
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('status'), server, info, chat=True)
+            await reply(server, info, self.get_help_msg('status'), chat=True)
         elif args[1] == 'online':
-            await reply(self.online_list(), server, info, chat=True)
+            await reply(server, info, self.online_list(), chat=True)
         elif args[1] == 'CBR':
-            await reply(self.get_status(), server, info, chat=True)
+            await reply(server, info, self.get_status(), chat=True)
         elif args[1] == 'ping':
             if length == 2:
                 message = await self.ping_all()
-                await reply('Ping clients:' + message, server, info, chat=True)
+                await reply(server, info, 'Ping clients:' + message, chat=True)
             else:
                 if length > 2 and args[2] in self.server.clients.keys():
                     ping = await self.ping_test(args[2])
-                    await reply(self.ping_log(ping, args[2]), server, info, chat=True)
+                    await reply(server, info, self.ping_log(ping, args[2]), chat=True)
                 else:
-                    await reply("Client not found", server, info, chat=True)
+                    await reply(server, info, "Client not found", chat=True)
         elif args[1] == 'all':
             msg = self.get_status()
             msg += f"{await self.ping_all()}"
-            await reply(msg, server, info, chat=True)
+            await reply(server, info, msg, chat=True)
         else:
             await unknown_cmd('status', server, info)
     elif args[0] == 'plugin' or args[0] == 'plg':
         if length == 1 or args[1] == 'help':
-            await reply(self.get_help_msg('plugin'), server, info, chat=True)
+            await reply(server, info, self.get_help_msg('plugin'), chat=True)
         elif args[1] == 'list':
             loaded_plugin = await self.plugin_manager.get_loaded_plugins()
             disabled_plugin = await self.plugin_manager.get_disable_plugins()
@@ -117,32 +120,32 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
             msg = msg + f"\n§rNot loaded plugins: {len(not_loaded_plugin)}"
             for i in not_loaded_plugin:
                 msg = msg + f"\n- {i}"
-            await reply(msg, server, info)
+            await reply(server, info, msg)
         elif args[1] == 'load' and length == 3:
-            await reply(await self.plugin_manager.load_plugin(args[2]), server, info)
+            await reply(server, info, await self.plugin_manager.load_plugin(args[2]))
         elif (args[1] == 'reload' or args[1] == 'r') and length == 3:
             result = await self.plugin_manager.reload_plugin(args[2])
             if result is None:
-                await reply(f"Plugin {args[2]} not exist", server, info)
+                await reply(server, info, f"Plugin {args[2]} not exist")
             elif result:
-                await reply(f"Plugin {args[2]} reloaded success", server, info)
+                await reply(server, info, f"Plugin {args[2]} reloaded success")
             else:
-                await reply(f"Plugin {args[2]} success unloaded, failed to load", server, info)
+                await reply(server, info, f"Plugin {args[2]} success unloaded, failed to load")
         elif args[1] == 'reloadall':
             nursery.start_soon(self.plugin_manager.reload_all_plugins)
         elif args[1] == 'enable' and length == 3:
-            await reply(await self.plugin_manager.enable_plugin(args[2]), server, info)
+            await reply(server, info, await self.plugin_manager.enable_plugin(args[2]))
         elif command:
             if args[1] == 'unload' and length == 3:
                 if await self.plugin_manager.unload_plugin(args[2]):
-                    await reply(f"Plugin {args[2]} unloaded", server, info)
+                    await reply(server, info, f"Plugin {args[2]} unloaded")
                 else:
-                    await reply(f"Plugin {args[2]} not found", server, info)
+                    await reply(server, info, f"Plugin {args[2]} not found")
             elif args[1] == 'disable' and length == 3:
                 if await self.plugin_manager.disable_plugin(args[2]):
-                    await reply(f"Plugin ID: '{args[2]}' disabled", server, info)
+                    await reply(server, info, f"Plugin ID: '{args[2]}' disabled")
                 else:
-                    await reply(f"Plugin ID: '{args[2]}' Not exist", server, info)
+                    await reply(server, info, f"Plugin ID: '{args[2]}' Not exist")
             else:
                 await unknown_cmd('plugin', server, info)
         else:
@@ -202,7 +205,7 @@ def run_process(server: CBRInterface, info: MessageInfo, command=False):
 
 def on_message(server: CBRInterface, info: MessageInfo):
     if info.content == '##help':
-        server.reply(server._server.get_register_help_msg(), info)
+        server.reply(info, server._server.get_register_help_msg())
     if info.content.startswith('##CBR') and info.client_type == 'mc':  # for some reason, only mc client can access now
         info.cancel_send_message()
         run_process(server, info)

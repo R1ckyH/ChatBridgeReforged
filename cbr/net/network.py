@@ -16,7 +16,7 @@ class NetworkBase(AESCryptor):
     async def receive_msg(self, stream: trio.SocketStream, address):
         data = await stream.receive_some(4)
         if len(data) < 4:
-            self.logger.error("Data length error")
+            self.logger.error(f"Data length error, Data = {data}")
             return '{}'
         length = struct.unpack('I', data)[0]
         msg = await stream.receive_some(length)

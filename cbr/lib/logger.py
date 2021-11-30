@@ -10,7 +10,6 @@ LOG_FILE = 'logs'
 LOG_PATH = LOG_FILE + "/latest.log"
 CHAT_LOG_PATH = LOG_FILE + "/chat.log"
 
-
 logger_black_list = ['ping', 'Result of', '- ', 'Client ', 'Ping client', 'Send Command', 'Unknown ']  # File handler
 logger_black_arg2 = ['joined', 'left']  # File handler
 
@@ -42,7 +41,7 @@ class StdoutFilter(logging.Filter):
 
 
 class CBRLogger(logging.getLoggerClass()):
-    def __init__(self, name, config: Config):
+    def __init__(self, name, config: Config = Config()):
         if not path.exists(LOG_FILE):
             mkdir(LOG_FILE)
         super().__init__(name)
@@ -85,6 +84,7 @@ class CBRLogger(logging.getLoggerClass()):
 
     def chat(self, msg):
         self.log(21, msg)
+
     # no use
     '''def restart_all(self):
         self.removeHandler(self.stdout_handler)
@@ -101,7 +101,7 @@ class CBRLogger(logging.getLoggerClass()):
 
 if __name__ == '__main__':
     logging.setLoggerClass(CBRLogger)
-    b = CBRLogger("CBR", Config())
+    b = CBRLogger("CBR")
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s')
     b.setLevel(20)
     b.info("testing")

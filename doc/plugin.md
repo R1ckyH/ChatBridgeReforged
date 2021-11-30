@@ -50,14 +50,14 @@ It also has these following functions:
 
 | Function | Usage |
 |---|---|
-| send_message(msg, target) | Send `msg` to `target` server |
-| tell_message(msg, target, player) | Send `msg` to `player` in `target` server |
-| reply(msg, MessageInfo) | replay `msg` to `MessageInfo` sender |
-| send_custom_message(target, msg, client, player) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
-| execute_command(command, targets) | Execute `command` in `target` server without waiting result |
-| execute_mcdr_command(command, targets) | Execute `mcdr` `command` in `target` server without waiting result **only work with command that starts with `!!` now** |
-| command_query | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
-| servers_command_query(command, targets) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
+| send_message(target, msg) | Send `msg` to `target` server |
+| tell_message(target, receiver, msg) | Send `msg` to `player` in `target` server |
+| reply(MessageInfo, msg) | replay `msg` to `MessageInfo` sender |
+| send_custom_message(self_client, target, msg, source_player, receiver) | Send custom message to target server **NOT recommend to use unless you know what you are doing** |
+| execute_command(target, command) | Execute `command` in `target`(`str`) server without waiting result |
+| execute_mcdr_command(target, command) | Execute `mcdr` `command` in `target`(`str`) server without waiting result **only work with command that starts with `!!` now** |
+| command_query(target, command) | Send a string `command` to `target`(`str`) to use `rcon_query`. Will wait at most 2 second for result, return `result`(str) if success, else return `None` |
+| servers_command_query(targets, command) | Send strings `command` to `targets`(`list`) to use `rcon_query`. Will wait at most 2 second for result, return `results`(dict) if success, else return `None` |
 | api_query(target, plugin_id, function_name, keys) | query for get the result of api in mcdr plugin, function name can include package name, keys is a list which store non object value. Will wait at most 2 second for result, return `result`(str/bool/list/dict) if success, else return `None`  |
 
 **Other**

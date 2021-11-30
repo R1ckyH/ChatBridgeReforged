@@ -29,9 +29,9 @@ def list_player(server, info):
         info.cancel_send_message()
         online_mc_client = server.get_online_mc_clients()
         players = {}
-        results = server.servers_command_query('list', online_mc_client)
+        results = server.servers_command_query(online_mc_client, 'list')
         if results is None:
-            server.reply("No information", info)
+            server.reply(info, "No information")
             return
         for i in results.keys():
             if results[i] is not None:

@@ -44,11 +44,11 @@ def check_start(msg):
 def custom_check_send(target, msg, client, player, server: CBRInterface):
     if target == 'full' and full_msg_group_client != '':
         if server.is_client_online(full_msg_group_client):
-            server.send_custom_message(full_msg_group_client, msg, client, player)
+            server.send_custom_message(client, full_msg_group_client, msg, player)
             return disable_duplicate_send
     elif target == 'less' and less_msg_group_client != '':
         if server.is_client_online(less_msg_group_client):
-            server.send_custom_message(less_msg_group_client, msg, client, player)
+            server.send_custom_message(client, less_msg_group_client, msg, player)
             return disable_duplicate_send
     return False
 
@@ -63,7 +63,7 @@ def on_message(server: CBRInterface, info: MessageInfo):
                 servers = server.get_online_mc_clients()
                 server.logger.info(f"[{info.source_client}] <{info.sender}> {msg}")
                 for i in servers:
-                    server.send_custom_message(i, msg, info.source_client, info.sender)
+                    server.send_custom_message(info.source_client, i, msg, info.sender)
     else:
         args = info.content.split(' ')
         msg = info.content

@@ -33,7 +33,7 @@ timeout = 120
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.0.1-RC2-dev018',
+    'version': '0.0.1-RC3-dev019',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
@@ -263,38 +263,37 @@ class AESCryptor:
     """
     def __init__(self, key, mode=AES.MODE_CBC, logger: CBRLogger = None):
         self.key = self.__to16length(key)
-        self.mode = mode
         self.logger = logger
+        self.mode = mode
+
+    def get_cryptor(self):
+        return AES.new(self.key, self.mode, self.key)
 
     def __to16length(self, text):
         text = bytes(text, encoding="utf-8")
         return text + (b'\0' * ((16 - (len(text) % 16)) % 16))
 
     def encrypt(self, text):
-        cryptor = AES.new(self.key, self.mode, self.key)
         text = self.__to16length(text)
-        result = b2a_hex(cryptor.encrypt(text))
+        result = b2a_hex(self.get_cryptor().encrypt(text))
         result = str(result, encoding='utf-8')
         return result
 
     def decrypt(self, text):
-        cryptor = AES.new(self.key, self.mode, self.key)
         text = bytes(text, encoding='utf-8')
         try:
-            result = cryptor.decrypt(a2b_hex(text))
-        except TypeError as err:
+            result = self.get_cryptor().decrypt(a2b_hex(text))
+        except Exception as err:
             self.logger.error('TypeError when decrypting text')
-            self.logger.error('text =' + str(text))
-            raise err
-        except ValueError as err:
+            self.logger.error('Text =' + str(text))
+            self.logger.error('Len(text) =' + str(len(text)))
             self.logger.error(str(err.args))
-            self.logger.error('len(text) =' + str(len(text)))
             raise err
         try:
             result = str(result, encoding='utf-8')
         except UnicodeDecodeError:
-            self.logger.error('error at decrypt string conversion')
-            self.logger.error('raw result = ' + str(result))
+            self.logger.error('Error at decrypt string conversion')
+            self.logger.error('Raw result = ' + str(result))
             result = str(result, encoding='ISO-8859-1')
             self.logger.error('ISO-8859-1 = ' + str(result))
         return result.rstrip('\0')

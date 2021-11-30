@@ -107,7 +107,23 @@ class CBRInterface:
         if client in self._server.clients.keys():
             return self._server.clients[client].type
 
-    def tell_message(self, msg, target, receiver=''):
+    def send_message(self, target, msg):
+        """
+            send message to target client
+        """
+        if not self.__running():
+            self.logger.error("Server closed, not allow to send anything")
+            return
+        if target == "CBR":
+            self.__split_msg(msg)
+            return
+        if self.__exist(target) and self.is_client_online(target):
+            stream = self._server.clients[target].stream
+            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, "", target, trio_token=self.__token)
+        else:
+            self.logger.error(f"client {target} not found or not connected")
+
+    def tell_message(self, target, receiver, msg):
         """
             send message to receiver in target client
 
@@ -126,7 +142,7 @@ class CBRInterface:
             self.logger.error(f"client {target} not found or not connected")
             # TODO: raise Error(to be confirm)
 
-    def reply(self, msg, info: 'MessageInfo'):
+    def reply(self, info: 'MessageInfo', msg):
         """
             reply to client or player(if exist)
         """
@@ -144,23 +160,7 @@ class CBRInterface:
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def send_message(self, msg, target):
-        """
-            send message to target client
-        """
-        if not self.__running():
-            self.logger.error("Server closed, not allow to send anything")
-            return
-        if target == "CBR":
-            self.__split_msg(msg)
-            return
-        if self.__exist(target) and self.is_client_online(target):
-            stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, "", target, trio_token=self.__token)
-        else:
-            self.logger.error(f"client {target} not found or not connected")
-
-    def send_custom_message(self, target, msg, client, player='', receiver=''):
+    def send_custom_message(self, self_client, target, msg, source_player='', receiver=''):
         """
             send message to target client with custom information
         """
@@ -171,11 +171,11 @@ class CBRInterface:
             return
         if self.__exist(target) and self.is_client_online(target):
             stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, client, player, msg, receiver, target, trio_token=self.__token)
+            trio.from_thread.run(self._server.send_message, stream, self_client, source_player, msg, receiver, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def execute_command(self, command, target):
+    def execute_command(self, target, command):
         """
             execute command in a cbr client without return
         """
@@ -187,7 +187,7 @@ class CBRInterface:
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def execute_mcdr_command(self, command, target):
+    def execute_mcdr_command(self, target, command):
         """
             execute mcdr command in a cbr client without return
         """
@@ -199,7 +199,7 @@ class CBRInterface:
         else:
             self.logger.error(f"client {target} not found or not connected")
 
-    def command_query(self, command, target):
+    def command_query(self, target, command):
         """
             execute command in a cbr client with return
 
@@ -213,7 +213,7 @@ class CBRInterface:
             self.logger.error(f"client {target} not found or not connected")
             return None
 
-    def servers_command_query(self, command, targets):
+    def servers_command_query(self, targets: list, command):
         """
             query for get the result of multi servers
 
