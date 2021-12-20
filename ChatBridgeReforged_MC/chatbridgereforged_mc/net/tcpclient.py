@@ -1,4 +1,3 @@
-import json
 import socket as soc
 import struct
 import threading
@@ -75,11 +74,13 @@ class CBRTCPClient(Network):
         self.cancelled = False
         self.connecting = False
 
-    def try_start(self, info=None):
+    def try_start(self, info=None, auto_connect=False):
         if not self.connected and not self.connecting:
             self.connecting = True
             threading.Thread(target=self.start, name='CBR', args=(info,), daemon=True).start()
         else:
+            if auto_connect:
+                return
             if info is not None:
                 self.logger.print_msg("Already Connected to server", 2, info, server=self.server, error=True)
             else:

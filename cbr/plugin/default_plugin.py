@@ -100,7 +100,7 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
                     await reply(server, info, "Client not found", chat=True)
         elif args[1] == 'all':
             msg = self.get_status()
-            msg += f"{await self.ping_all()}"
+            msg += await self.ping_all()
             await reply(server, info, msg, chat=True)
         else:
             await unknown_cmd('status', server, info)

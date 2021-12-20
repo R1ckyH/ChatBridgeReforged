@@ -1,0 +1,14 @@
+{
+    "debug_mode": false,
+    "config_path": "config/ChatBridgeReforged_MC.json",
+    "log_path": "logs/ChatBridgeReforged_MC.log",
+    "chat_path": "logs/ChatBridgeReforged_MC_chat.log",
+    "client_color": "6",
+    "ping_time": 60,
+    "timeout": 120,
+    "size_to_zip": 512,
+    "size_to_zip_chat": 512,
+    "disable_chat_log": true,
+    "split_chat_log": false,
+    "auto_restart": true
+}

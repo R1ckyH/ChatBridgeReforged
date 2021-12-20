@@ -26,16 +26,18 @@ LOG_PATH = 'logs/ChatBridgeReforged_cqhttp.log'
 CHAT_PATH = 'logs/ChatBridgeReforged_cqhttp_chat.log'
 SIZE_TO_ZIP = 512  # kb
 SIZE_TO_ZIP_CHAT = 512  # kb
-DISABLE_CHAT_LOG = False
+DISABLE_CHAT_LOG = True
 SPLIT_CHAT_LOG = False
+auto_restart = True  # not recommend to change
 client_color = '6'  # minecraft color code
 ping_time = 60
 timeout = 120
 wait_time = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
+end = False
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_cqhttp',
-    'version': '0.0.1-RC3-dev019',
+    'version': '0.0.1-RC4-dev020-pre-release',
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
@@ -267,18 +269,51 @@ class CQClient(websocket.WebSocketApp):
         self.client = client_class
         self.logger = logger
         self.config = config
+        self.connected = False
+        self.success_connect = False
+        self.thread_event = threading.Event()
 
-    def wait_start(self, waiting_time):
+    def run(self):
         self.logger.info(f"Starting CQ services to {self.ws_url}")
         self.run_forever()
-        self.logger.error(f"Connection failed to qq, reconnect after {waiting_time} second")
-        time.sleep(waiting_time)
+
+    def auto_connect(self):
+        def trigger(waiting_time):
+            #if not self.connected:
+            self.logger.error(f"Connection error to qq, reconnect after {waiting_time} second")
+            time.sleep(waiting_time)
+            self.thread_event.set()
+
+        self.success_connect = False
+        for i in wait_time:
+            self.logger.debug(f"Check trigger")
+            if self.success_connect or self.connected:
+                self.logger.debug(f"Check reset, start after 5 sec")
+                time.sleep(5)
+                return
+            trigger(i)
+        while True:
+            self.logger.debug(f"Check trigger")
+            if self.success_connect or self.connected:
+                self.logger.debug(f"Check reset")
+                time.sleep(5)
+                return
+            trigger(3600)
+
+    def auto_connector(self):
+        time.sleep(10)
+        while True:
+            self.auto_connect()
 
     def start(self):
-        for i in wait_time:
-            self.wait_start(i)
-        while True:
-            self.wait_start(3600)
+        if auto_restart:
+            threading.Thread(name="cq_auto_restart", target=self.auto_connector, daemon=True).start()
+            while True:
+                self.run()
+                self.thread_event.clear()
+                self.thread_event.wait()
+        else:
+            self.run()
 
     def on_message(self, client_class, message):
         if not self.client.connected:
@@ -287,6 +322,7 @@ class CQClient(websocket.WebSocketApp):
         if 'status' in data:
             if 'msg' in data and data['msg'] == 'SEND_MSG_API_ERROR':
                 self.logger.error('CQBot error on sending message')
+                self.logger.debug(data)
             else:
                 self.logger.debug('CQBot return status {}'.format(data['status']))
         elif data['post_type'] == 'message' and data['message_type'] == 'group':
@@ -301,9 +337,12 @@ class CQClient(websocket.WebSocketApp):
         self.logger.bug_log()
 
     def on_open(self, client_class):
+        self.success_connect = True
+        self.connected = True
         self.logger.info(f"Connected to qq")
 
     def on_close(self, client_class, close_code, close_msg):
+        self.connected = False
         self.logger.info(f"Close connection with code : {close_code}")
         self.logger.debug(f"Close message : {close_msg}")
 
@@ -313,7 +352,12 @@ class CQClient(websocket.WebSocketApp):
         try:
             self.send(message)
         except Exception:
-            self.logger.error("Fail to send message to qq")
+            self.logger.error("Fail to send message to qq, try connect now")
+            self.thread_event.set()
+            try:
+                self.send(message)
+            except Exception:
+                self.logger.bug_log(error=True)
 
     def send_text(self, text, group_id):
         msg = ''
@@ -326,7 +370,10 @@ class CQClient(websocket.WebSocketApp):
                 length = 0
             msg += i
             length += len(i)
-        self.send_msg(msg, group_id)
+        try:
+            self.send_msg(msg, group_id)
+        except websocket.WebSocketConnectionClosedException:
+            self.logger.error("Connection to qq closed")
 
 
 class AESCryptor:
@@ -522,6 +569,7 @@ class CBRTCPClient(Network):
         self.connected = False
         self.cancelled = False
         self.connecting = False
+        self.success_connect = False
         self.name = config.name
         self.password = config.password
         super().__init__(config.aes_key, self)
@@ -559,6 +607,7 @@ class CBRTCPClient(Network):
             return
         self.connected = True
         self.connecting = False
+        self.success_connect = True
         self.socket.settimeout(timeout)
         self.handle_echo()
 
@@ -594,7 +643,7 @@ class CBRTCPClient(Network):
         self.logger.print_msg(f"CBR status: Online = {self.connected}", 2)
 
     def keep_alive(self):
-        while self.socket is not None and self.connected:
+        while self.socket is not None and self.connected and not end:
             self.logger.debug("keep alive")
             for i in range(ping_time):
                 time.sleep(1)
@@ -641,28 +690,31 @@ class CBRTCPClient(Network):
 
 
 def wait_restart():
+    client.success_connect = False
     for i in wait_time:
         time.sleep(i)
-        if not client.connected:
+        if not client.success_connect and not client.connected:
             # self.logger.error(f"Connection failed, reconnect after {waiting_time} second")
-            client.try_start(True)
+            client.logger.debug(f"Try start")
+            client.try_start(auto_connect=True)
         else:
-            return
-    while True:
-        if not client.connected:
-            time.sleep(3600)
-            client.try_start(True)
-        else:
-            return
-
-
-def auto_restart():
-    while True:
-        wait_restart()
-        '''while True:
+            client.logger.debug(f"Auto_restart reset after 5 sec")
             time.sleep(5)
-            if not client.connected:
-                client.try_start(True)'''
+            return
+    while True:
+        if not client.success_connect and not client.connected:
+            time.sleep(3600)
+            client.logger.debug(f"Try start")
+            client.try_start(auto_connect=True)
+        else:
+            client.logger.debug(f"Auto_restart reset after 5 sec")
+            time.sleep(5)
+            return
+
+
+def restart_loop():
+    while not end:
+        wait_restart()
 
 
 def main():
@@ -674,7 +726,8 @@ def main():
     logger.load(client)
     client.try_start()
     CQ_bot = CQClient(config, logger, client)
-    threading.Thread(target=auto_restart, name="auto_restart", daemon=True).start()
+    if auto_restart:
+        threading.Thread(target=restart_loop, name="auto_restart", daemon=True).start()
     threading.Thread(target=CQ_bot.start, name="CQHTTP", daemon=True).start()
     while True:
         input_message = input()

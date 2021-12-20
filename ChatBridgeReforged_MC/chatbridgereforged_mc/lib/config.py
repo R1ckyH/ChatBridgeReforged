@@ -1,7 +1,9 @@
 """
 config here
 """
+import importlib.resources
 import os
+import chatbridgereforged_mc
 
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.resources import *
@@ -11,6 +13,7 @@ class AdvancedConfig:
     def __init__(self, logger: CBRLogger, server=None):
         self.logger = logger
         self.server: PluginServerInterface = server
+        self.wait_time = WAIT_TIME
         self.advanced_path = ADVANCED_CONFIG_PATH
         self.debug_mode = DEFAULT_ADVANCED_CONFIG['debug_mode']
         self.config_path = DEFAULT_ADVANCED_CONFIG['config_path']
@@ -23,20 +26,22 @@ class AdvancedConfig:
         self.size_to_zip_path = DEFAULT_ADVANCED_CONFIG['size_to_zip_chat']
         self.disable_chat_log = DEFAULT_ADVANCED_CONFIG['disable_chat_log']
         self.split_chat_log = DEFAULT_ADVANCED_CONFIG['split_chat_log']
+        self.auto_restart = DEFAULT_ADVANCED_CONFIG['auto_restart']
 
     def load_advanced_config(self):
         if self.server is not None:
             with self.server.open_bundled_file(self.advanced_path) as config_file:
                 data = dict(json.load(config_file))
         else:
-            if not os.path.exists(self.advanced_path):
+            if importlib.resources.is_resource(chatbridgereforged_mc, "advanced_config.json"):
+                with importlib.resources.open_binary(chatbridgereforged_mc, "advanced_config.json") as config_file:
+                    data = dict(json.load(config_file))
+            else:
                 self.logger.error('Config not find')
                 raise FileNotFoundError("Advanced_config not find")
-            with open(self.advanced_path, 'r', encoding='utf-8') as config_file:
-                data = dict(json.load(config_file))
         for keys in DEFAULT_ADVANCED_CONFIG.keys():
             if keys not in data.keys():
-                self.logger.error(f"Config {keys} not found, use default value {DEFAULT_ADVANCED_CONFIG[keys]}")
+                self.logger.error(f"Advanced config {keys} not found, use default value {DEFAULT_ADVANCED_CONFIG[keys]}")
                 data.update({keys: DEFAULT_ADVANCED_CONFIG[keys]})
         return data
 

@@ -3,7 +3,7 @@
 - Beta version, please bear the risk if you use it
 - v0.0.1-Beta
 - only tested for python 3.7 and 3.8
-- python version should be 3.6+
+- python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
 
   ![image](./CBR.svg)
@@ -45,38 +45,38 @@ Setup `config.yml` in previous file and
 ### server_setting
 `Dict`
 
-| config | data type | description |
-|----|----|----|
-| host_name | `string`| ip address for hosting |
-| port | `int` | port for hosting |
-| aes_key | `string` | key for `AES` encryption |
+| config    | data type | description              |
+|-----------|-----------|--------------------------|
+| host_name | `string`  | ip address for hosting   |
+| port      | `int`     | port for hosting         |
+| aes_key   | `string`  | key for `AES` encryption |
 
 ### clients
 `list`
 
-| config | data type | description |
-|----|----|----|
-| name | `string` | name of client |
-| password | `string`| password of client |
-| config | data type | description |
+| config   | data type | description        |
+|----------|-----------|--------------------|
+| name     | `string`  | name of client     |
+| password | `string`  | password of client |
+| config   | data type | description        |
 
 ### log
 `Dict`
 
-| config | data type | description |
-|----|----|----|
-| size_to_zip | `double` | size to zip the file `latest.log`(kb) |
-| split_log | `bool` | split log to chat log and normal log |
-| size_to_zip_chat | `bool` | size to zip the file `chat.log`(kb) |
+| config           | data type | description                           |
+|------------------|-----------|---------------------------------------|
+| size_to_zip      | `double`  | size to zip the file `latest.log`(kb) |
+| split_log        | `bool`    | split log to chat log and normal log  |
+| size_to_zip_chat | `bool`    | size to zip the file `chat.log`(kb)   |
 
 ### debug
 `Dict`
 
-| config | data type | description |
-|----|----|----|
-| all | `bool` | debug mode switch |
-| CBR | `bool` | debug mode switch |
-| plugin | `bool` | debug mode switch |
+| config | data type | description       |
+|--------|-----------|-------------------|
+| all    | `bool`    | debug mode switch |
+| CBR    | `bool`    | debug mode switch |
+| plugin | `bool`    | debug mode switch |
 
 ## cqhttp
 

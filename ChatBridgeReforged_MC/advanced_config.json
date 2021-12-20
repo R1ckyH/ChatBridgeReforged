@@ -1,8 +1,0 @@
-{
-	"debug_mode" : false,
-	"config_path" : "config/ChatBridgeReforged_client.json",
-	"log_path" : "logs/ChatBridgeReforged_Client_mc.log",
-	"client_color" : "6",
-	"ping_time" : 60,
-	"timeout" : 120
-}

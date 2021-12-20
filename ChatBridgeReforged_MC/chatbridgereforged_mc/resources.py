@@ -6,11 +6,13 @@ from chatbridgereforged_mc.utils import *
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-VERSION = '0.0.1-RC3-dev019'
+VERSION = '0.0.1-RC4-dev020-pre-release'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 
-ADVANCED_CONFIG_PATH = 'advanced_config.json'
+ADVANCED_CONFIG_PATH = 'chatbridgereforged_mc/advanced_config.json'
+
+WAIT_TIME = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
 
 DEFAULT_ADVANCED_CONFIG = {
     "debug_mode": False,
@@ -22,8 +24,9 @@ DEFAULT_ADVANCED_CONFIG = {
     "timeout": 120,
     "size_to_zip": 512,  # kb
     "size_to_zip_chat": 512,  # kb
-    "disable_chat_log": False,
-    "split_chat_log": False
+    "disable_chat_log": True,
+    "split_chat_log": False,
+    "auto_restart": True  # not recommend to change
 }
 
 DEFAULT_CONFIG = {
