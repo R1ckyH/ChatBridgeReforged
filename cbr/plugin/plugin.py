@@ -97,7 +97,8 @@ class PluginManager:
         self.plugins = {}
         self.plugin_dir = {}
 
-    async def __get_plugin_path_list(self):
+    @staticmethod
+    async def __get_plugin_path_list():
         plugins = ['./cbr/plugin/default_plugin.py']
         for entry in os.scandir('./plugins'):
             if entry.is_file() and entry.name.endswith('.py'):
@@ -125,7 +126,8 @@ class PluginManager:
             cache_list[i] = os.path.basename(cache_list[i])
         return cache_list
 
-    async def get_disable_plugins(self):
+    @staticmethod
+    async def get_disable_plugins():
         plugins = []
         for entry in os.scandir('./plugins'):
             if entry.is_file() and entry.name.endswith('.disable'):
@@ -212,9 +214,9 @@ class PluginManager:
 
     async def disable_plugin(self, plugin_id):
         if plugin_id in self.plugins.keys():
-            plguin_path = self.plugins[plugin_id].path_name
+            plugin_path = self.plugins[plugin_id].path_name
             await self.unload_plugin(plugin_id)
-            os.rename(plguin_path, plguin_path + ".disable")
+            os.rename(plugin_path, plugin_path + ".disable")
             return True
         else:
             return False

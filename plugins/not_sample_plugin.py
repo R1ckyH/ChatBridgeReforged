@@ -52,7 +52,7 @@ def on_message(server: CBRInterface, info: MessageInfo):
     list_player(server, info)
 
 
-def on_command(server, info):  # not recommend to do, but you can do it
+def on_command(server, info):  # not recommend doing, but you can do it
     list_player(server, info)
 
 

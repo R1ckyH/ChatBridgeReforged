@@ -100,7 +100,8 @@ class Process:
         self.logger.debug(f'get ping result from {target}:{ping}', "CBR")
         return round(ping, 1)
 
-    def ping_log(self, ping, target):
+    @staticmethod
+    def ping_log(ping, target):
         if ping == -2:
             return f'- {target}: Offline'
         elif ping == -1:
@@ -168,7 +169,8 @@ class ServerProcess(Process):
             msg += "\n" + self.ping_log(self.server.clients[i].ping, i)
         return msg
 
-    def get_help_msg(self, name=''):
+    @staticmethod
+    def get_help_msg(name=''):
         if name == '':
             return help_msg
         elif name == 'reload':
@@ -215,7 +217,8 @@ class ClientProcess(Process):
         else:
             self.logger.info(f'{self.current_client} connected to the server{lib_msg}')
 
-    def client_type_check(self, msg):  # For old ChatBridge
+    @staticmethod
+    def client_type_check(msg):  # For old ChatBridge
         if 'type' not in msg.keys():
             client_type = None
         else:

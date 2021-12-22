@@ -53,7 +53,8 @@ class CBRLogger(logging.getLoggerClass()):
         logging.addLevelName(21, "CHAT")
         self.setLevel(logging.DEBUG)
 
-    def formatter(self, date=None):
+    @staticmethod
+    def formatter(date=None):
         return logging.Formatter('[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s', datefmt=date)
 
     def setup(self, chat=False, split_log=True):

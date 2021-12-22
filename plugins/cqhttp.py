@@ -23,9 +23,9 @@ less_msg_group_client = ''
 disable_join_left = True
 disable_chat_startswith_to_qq = ["##"]
 config_path = 'config/cqhttp.json'
-disable_duplicate_send = True  # Not recommend to send False unless you sure that your qq bot wont be ban
+disable_duplicate_send = True  # Not recommend sending False unless you sure that your qq bot won't be banned
 # if enabled, cq will send message to both full message group and less message group at same time
-# if not enable, message have prefix like ##qq will not be appear in full message group
+# if not enable, message have prefix like ##qq will not be appeared in full message group
 
 
 def replace_message(msg):

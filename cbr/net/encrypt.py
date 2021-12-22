@@ -6,7 +6,7 @@ from cbr.lib.logger import CBRLogger
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor copied from ChatBridge cause I dose not want to change this part
+    By ricky, most of the AESCryptor copied from ChatBridge because I does not want to change this part
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """

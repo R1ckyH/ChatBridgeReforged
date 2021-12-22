@@ -12,7 +12,6 @@ from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
 
-
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
 LIB_VERSION = "v20210915"
@@ -245,7 +244,7 @@ class Compressor:
     def zip_log(self, file_path, max_size):
         self.logger.debug(f"Start zip file: '{os.path.basename(file_path)}'")
         if os.path.isfile(file_path):
-            file_size = (os.path.getsize(file_path)/1024)
+            file_size = (os.path.getsize(file_path) / 1024)
             if file_size > max_size:
                 if file_path == CHAT_PATH:
                     zip_name = 'logs/CBR_chat'
@@ -264,7 +263,8 @@ class Compressor:
 
 class CQClient(websocket.WebSocketApp):
     def __init__(self, config: Config, logger: CBRLogger, client_class: 'CBRTCPClient'):
-        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close, on_open=self.on_open)
+        super().__init__(config.ws_url, on_message=self.on_message, on_error=self.on_error, on_close=self.on_close,
+                         on_open=self.on_open)
         self.ws_url = config.ws_url
         self.client = client_class
         self.logger = logger
@@ -279,7 +279,7 @@ class CQClient(websocket.WebSocketApp):
 
     def auto_connect(self):
         def trigger(waiting_time):
-            #if not self.connected:
+            # if not self.connected:
             self.logger.error(f"Connection error to qq, reconnect after {waiting_time} second")
             time.sleep(waiting_time)
             self.thread_event.set()
@@ -378,10 +378,11 @@ class CQClient(websocket.WebSocketApp):
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor copied from ChatBridge cause I dose not want to change this part
+    By ricky, most of the AESCryptor copied from ChatBridge because I does not want to change this part
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """
+
     def __init__(self, key, mode=AES.MODE_CBC, logger: CBRLogger = None):
         self.key = self.__to16length(key)
         self.logger = logger

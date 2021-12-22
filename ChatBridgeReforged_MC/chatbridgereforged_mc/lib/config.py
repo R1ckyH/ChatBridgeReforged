@@ -1,9 +1,8 @@
 """
 config here
 """
-import importlib.resources
+import zipfile
 import os
-import chatbridgereforged_mc
 
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.resources import *
@@ -33,12 +32,19 @@ class AdvancedConfig:
             with self.server.open_bundled_file(self.advanced_path) as config_file:
                 data = dict(json.load(config_file))
         else:
-            if importlib.resources.is_resource(chatbridgereforged_mc, "advanced_config.json"):
-                with importlib.resources.open_binary(chatbridgereforged_mc, "advanced_config.json") as config_file:
+            try:
+                with zipfile.ZipFile(sys.argv[0], "r") as zip:
+                    if "advanced_config.json" in zip.namelist():
+                        with zip.open("advanced_config.json", "r") as config_file:
+                            data = dict(json.load(config_file))
+                    else:
+                        self.logger.error('Config not find')
+                        raise FileNotFoundError("Advanced_config not find")
+                    print("PYZ MODE START")
+            except zipfile.BadZipFile:
+                with open("advanced_config.json", "r") as config_file:
                     data = dict(json.load(config_file))
-            else:
-                self.logger.error('Config not find')
-                raise FileNotFoundError("Advanced_config not find")
+                    print("FILE MODE START")
         for keys in DEFAULT_ADVANCED_CONFIG.keys():
             if keys not in data.keys():
                 self.logger.error(f"Advanced config {keys} not found, use default value {DEFAULT_ADVANCED_CONFIG[keys]}")

@@ -11,13 +11,19 @@ from binascii import b2a_hex, a2b_hex
 from Crypto.Cipher import AES
 from datetime import datetime
 
-from mcdreforged.api.all import *
+new_mcdr = False
+try:
+    from utils.rtext import *
+except ModuleNotFoundError:
+    from mcdreforged.api.all import *
+    new_mcdr = True
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 client: 'CBRTCPClient'
+client = None
 
 debug_mode = False
 CONFIG_PATH = 'config/ChatBridgeReforged_MC.json'
@@ -42,7 +48,7 @@ PLUGIN_METADATA = {
     'author': 'ricky',
     'link': 'https://github.com/R1ckyH/ChatBridgeReforged',
     'dependencies': {
-        'mcdreforged': '>=1.3.0'
+        'mcdreforged': '>=1.3.0'  # or ~=0.9
     }
 }
 
@@ -159,7 +165,8 @@ class CBRLogger:
             else:
                 self.debug(line)
 
-    def print_msg(self, msg, num, info=None, server: ServerInterface = None, player='', error=False, debug=False, not_spam=False, chat=False):
+    def print_msg(self, msg, num, info=None, server: 'ServerInterface' = None, player='', error=False, debug=False,
+                  not_spam=False, chat=False):
         if num == 0:
             if self.client.server is not None:
                 if server is not None:
@@ -187,7 +194,7 @@ class CBRLogger:
 class Config:
     def __init__(self, logger: CBRLogger, server=None):
         self.logger = logger
-        self.server: PluginServerInterface = server
+        self.server: 'PluginServerInterface' = server
         self.name = DEFAULT_CONFIG['name']
         self.password = DEFAULT_CONFIG['password']
         self.host_name = DEFAULT_CONFIG['host_name']
@@ -241,7 +248,7 @@ class Compressor:
     def zip_log(self, file_path, max_size):
         self.logger.debug(f"Start zip file: '{os.path.basename(file_path)}'")
         if os.path.isfile(file_path):
-            file_size = (os.path.getsize(file_path)/1024)
+            file_size = (os.path.getsize(file_path) / 1024)
             if file_size > max_size:
                 if file_path == CHAT_PATH:
                     zip_name = 'logs/CBR_chat'
@@ -260,7 +267,7 @@ class Compressor:
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor copied from ChatBridge cause I dose not want to change this part
+    By ricky, most of the AESCryptor copied from ChatBridge because I does not want to change this part
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """
@@ -337,7 +344,7 @@ class ClientProcess:
         else:
             self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
 
-    def input_process(self, message, server: ServerInterface = None, info=None):
+    def input_process(self, message, server: 'ServerInterface' = None, info=None):
         message = message.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
         if message == 'help' or message == '':
             if server is not None and info is not None:
@@ -393,7 +400,8 @@ class ClientProcess:
                     return
                 for i in msg['message'].splitlines():
                     message = message_formatter(msg['client'], msg['player'], i)
-                    self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server, not_spam=True, chat=True)
+                    self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server, not_spam=True,
+                                          chat=True)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
@@ -401,7 +409,7 @@ class ClientProcess:
                 command = msg['command']
                 msg['result']['responded'] = True
                 if self.client.server is not None:
-                    if command.startswith("!!"):
+                    if command.startswith("!!") and new_mcdr:
                         self.client.server.execute_command(command)
                         return
                     if self.client.server.is_rcon_running():
@@ -490,7 +498,7 @@ class CBRTCPClient(Network):
     def __init__(self, config: 'Config', logger: CBRLogger, server=None):
         self.config = config
         self.logger = logger
-        self.server: ServerInterface = server
+        self.server: 'ServerInterface' = server
         self.socket = None
         self.connected = False
         self.cancelled = False
@@ -618,20 +626,25 @@ class CBRTCPClient(Network):
         self.connected = False
 
 
-@new_thread("CBRProcess")
-def on_info(server: ServerInterface, info: Info):
+def process_info(server: 'ServerInterface', info: 'Info'):
     msg = info.content
     if msg.startswith(PREFIX) or msg.startswith(PREFIX2):
-        info.cancel_send_to_server()
+        if new_mcdr:
+            info.cancel_send_to_server()
         # if msg.endswith('<--[HERE]'):
         #    msg = msg.replace('<--[HERE]', '')
-        client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, ""), server, info)
+        msg = msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
+        client.process.input_process(msg, server, info)
     else:
         if client is None:
             return
         client.try_start()
         if info.is_player and client.connected:
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
+
+
+def on_info(server: 'ServerInterface', info: 'Info'):
+    threading.Thread(name="CBR_Process", target=process_info, args=(server, info), daemon=True).start()
 
 
 def on_player_joined(server, name, info=None):
@@ -670,13 +683,16 @@ def main(server=None):
                 client.logger.bug_log()
 
 
-def on_load(server: ServerInterface, old):
+def on_load(server: 'PluginServerInterface', old):
     if old is not None:
         try:
             old.client.try_stop()
         except Exception:
             old.client.logger.bug_log(error=True)
-    server.register_help_message(PREFIX, "ChatBridgeReforged")
+    if new_mcdr:
+        server.register_help_message(PREFIX, "ChatBridgeReforged")
+    else:
+        server.add_help_message(PREFIX, "ChatBridgeReforged")
     time.sleep(0.5)
     main(server)
 

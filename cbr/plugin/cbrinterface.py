@@ -224,7 +224,7 @@ class CBRInterface:
 
             targets can't be string
 
-            return None in dict if cant get result
+            return None in dict if it can't get result
         """
         if not self.__running():
             return None
@@ -234,7 +234,7 @@ class CBRInterface:
         """
             query for get the result of api in mcdr plugin
 
-            is is ok to have function name with plugin package in mcdr 2.0 which like `abc.xyz`
+            It is ok to have function name with plugin package in mcdr 2.0 which like `abc.xyz`
 
             key is a list that store string, dict or bool
         """

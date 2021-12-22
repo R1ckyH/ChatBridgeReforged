@@ -10,7 +10,7 @@ VERSION = '0.0.1-RC4-dev020-pre-release'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 
-ADVANCED_CONFIG_PATH = 'chatbridgereforged_mc/advanced_config.json'
+ADVANCED_CONFIG_PATH = 'advanced_config.json'
 
 WAIT_TIME = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
 

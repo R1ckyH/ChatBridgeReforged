@@ -1,3 +1,2 @@
-trio
 mcdreforged
 pycryptodome

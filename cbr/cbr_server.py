@@ -1,5 +1,3 @@
-import os
-
 from cbr.lib.config import Config
 from cbr.lib.logger import CBRLogger
 from cbr.net.tcpserver import CBRTCPServer
