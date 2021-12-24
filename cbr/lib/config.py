@@ -14,7 +14,7 @@ from cbr.lib.zip import Compressor
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
 
-CHATBRIDGEREFORGED_VERSION = "0.0.1-RC4-dev020-pre-release"
+CHATBRIDGEREFORGED_VERSION = "0.0.1-dev021"
 LIB_VERSION = "v20210915"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"

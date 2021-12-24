@@ -46,7 +46,7 @@ end = False
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.0.1-RC4-dev020-pre-release',
+    'version': '0.0.1-dev021',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',
