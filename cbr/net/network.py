@@ -37,7 +37,6 @@ class NetworkBase(AESCryptor):
             target = 'to ' + target
         self.logger.debug(f"Send: {msg!r} {target}", "CBR")
         msg = self.encrypt(msg)
-        msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
         async with lock:
             await stream.send_all(msg)

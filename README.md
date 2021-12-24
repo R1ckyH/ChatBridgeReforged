@@ -12,8 +12,7 @@
 
 - use [trio](https://trio.readthedocs.io/) for Asynchronous processing
 - more feature will be release in the future
-- support to [ChatBridge](https://github.com/TISUnion/ChatBridge) `version` < `2.0` clients so far
-  - Some function in ChatBridge will not be supported
+- not support to [ChatBridge](https://github.com/TISUnion/ChatBridge) clients in release
 - [Ricky](https://github.com/R1ckyH) is a suck author
   - But he will try his best to maintain this repository
   - Please cheer him so that he will be happy to maintain this repository
@@ -21,6 +20,7 @@
 ## Basic
 
 use `##help` to get plugin help command
+
 use `##CBR` to get help command
 
 #### CBR Server setup

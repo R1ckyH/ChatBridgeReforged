@@ -39,7 +39,6 @@ class Network(AESCryptor):
             target = 'to ' + target
         self.logger.debug(f"Send: {msg!r} {target}")
         msg = self.encrypt(msg)
-        msg = bytes(msg, encoding='utf-8')
         msg = struct.pack('I', len(msg)) + msg
         try:
             socket.sendall(msg)

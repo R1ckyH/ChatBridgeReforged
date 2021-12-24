@@ -5,7 +5,9 @@ cqhttp Document
 
 **CBR cqhttp client is available for most of the one_bot v9 qq bot**
 
-it is managed in plugin/cqhttp.py.
+**CQHTTP of CBR is planning to change**
+
+it is managed by plugin/cqhttp.py right now.
 
 To use cqhttp in CBR, you should use the plugin `cqhttp.py`, 
 

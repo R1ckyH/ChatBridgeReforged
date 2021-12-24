@@ -94,14 +94,14 @@ This is a parsed information object. It belongs to the Info class in `cbr/plugin
 
 For the following message from the message's standard output：
 
-`[CBR] [09:00:00] [MainThread/INFO]: [survival] <TFC> Welcome to TFC`
+`[CBR] [09:00:00] [MainThread/INFO]: [survival] <CBR> Welcome to CBR`
 
 The attributes of the info object are:
 
 | Attribute     | Value            |
 |---------------|------------------|
-| content       | `Welcome to TFC` |
-| sender        | `TFC`            |
+| content       | `Welcome to CBR` |
+| sender        | `CBR`            |
 | source_client | `survival`       |
 | client_type   | `mc`             |
 | is_player()   | `True`           |
@@ -110,17 +110,17 @@ The attributes of the info object are:
 
 For the following message from the message's standard output：
 
-`[CBR] [09:00:00] [MainThread/INFO]: [CBR] TFC QQ : 1073626979`
+`[CBR] [09:00:00] [MainThread/INFO]: [CBR] MCDR QQ : 1101314858`
 
 The attributes of the info object are:
 
-| Attribute     | Value                 |
-|---------------|-----------------------|
-| content       | `TFC QQ : 1073626979` |
-| sender        | ``                    |
-| source_client | `CBR`                 |
-| client_type   | ``                    |
-| is_player()   | False                 |
+| Attribute     | Value                  |
+|---------------|------------------------|
+| content       | `MCDR QQ : 1101314858` |
+| sender        | ``                     |
+| source_client | `CBR`                  |
+| client_type   | ``                     |
+| is_player()   | False                  |
 
 ## Some tips for writing plugin
 

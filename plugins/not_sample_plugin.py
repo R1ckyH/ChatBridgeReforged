@@ -45,7 +45,7 @@ def list_player(server, info):
         message = "- Online players:"
         for i in range(len(online_mc_client)):
             message += f"\n[{online_mc_client[i]}]: {players[online_mc_client[i]]}"
-        server.reply(message, info)
+        server.reply(info, message)
 
 
 def on_message(server: CBRInterface, info: MessageInfo):
