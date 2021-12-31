@@ -6,7 +6,7 @@ from cbr.lib.logger import CBRLogger
 
 class MessageInfo:
     def __init__(self, client: str, message: str, player: str = None, client_type='', logger: CBRLogger = None):
-        self.source_client = client
+        self.source_client = client  # TODO: split client and source client
         self.content = message
         self.sender = player
         self._logger = logger

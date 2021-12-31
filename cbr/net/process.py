@@ -215,7 +215,7 @@ class ClientProcess(Process):
         if reconnect:
             self.logger.info(f"Reconnect to {name}: {lib_version}")
         else:
-            self.logger.info(f'{self.current_client} connected to the server{lib_msg}')
+            self.logger.info(f"Client: '{self.current_client}' connected to the server{lib_msg}")
 
     @staticmethod
     def client_type_check(msg):  # For old ChatBridge

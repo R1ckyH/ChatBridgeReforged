@@ -140,8 +140,9 @@ class CBRTCPServer(Network):
             msg = json.loads(msg)
         except Exception:
             await self.send_stop(stream)
-            self.logger.info(f"Failed decode message from {address}")
+            self.logger.info(f"Failed decode message from {address}, please check encryption keys")
             self.logger.bug(error=False)
+            self.logger.info(f"message: {msg}")
             await stream.aclose()
             return
         await client_process.process_msg(msg, stream, address, nursery)

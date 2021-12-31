@@ -271,7 +271,7 @@ class Compressor:
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor respire from ChatBridge, thx Fallen_Breath
+    By ricky, most of the AESCryptor inspire from ChatBridge, thx Fallen_Breath
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """

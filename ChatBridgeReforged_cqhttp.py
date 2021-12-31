@@ -23,7 +23,7 @@ client: 'CBRTCPClient'
 CQ_bot: 'CQClient'
 
 debug_mode = False
-CONFIG_PATH = 'config/ChatBridgeReforged_cqhttp.json'
+CONFIG_PATH = 'config/ChatBridgeReforged_cqhttp.json'  # TODO: new client structure
 LOG_PATH = 'logs/ChatBridgeReforged_cqhttp.log'
 CHAT_PATH = 'logs/ChatBridgeReforged_cqhttp_chat.log'
 SIZE_TO_ZIP = 512  # kb
@@ -381,7 +381,7 @@ class CQClient(websocket.WebSocketApp):
 
 class AESCryptor:
     """
-    By ricky, most of the AESCryptor respire from ChatBridge, thx Fallen_Breath
+    By ricky, most of the AESCryptor inspire from ChatBridge, thx Fallen_Breath
 
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """

@@ -167,6 +167,9 @@ class PluginManager:
             try:
                 plugin = Plugin(self.logger, plugin_path, plugin_file_name[:-3])
                 plugin.reload()
+                if plugin.id in self.plugins.keys():
+                    self.logger.error(f"Fail to load plugin: {plugin_file_name}, id: {plugin.id} duplicate")
+                    return False
                 self.logger.info(f"Load plugin {plugin.id}@{plugin.version}")
                 self.plugin_dir.update({plugin_file_name: plugin.id})
                 self.event_manager.register_plugin(plugin)
