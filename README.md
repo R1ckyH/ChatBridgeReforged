@@ -1,7 +1,5 @@
 # ChatBridgeReforged
 
-- Beta version, please bear the risk if you use it
-- v0.0.1-Beta
 - only tested for python 3.7 and 3.8
 - python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
