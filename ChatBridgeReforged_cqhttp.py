@@ -39,7 +39,7 @@ end = False
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_cqhttp',
-    'version': '0.0.1-dev021',
+    'version': '0.0.2-dev022',
     'name': 'ChatBridgeReforged_cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
