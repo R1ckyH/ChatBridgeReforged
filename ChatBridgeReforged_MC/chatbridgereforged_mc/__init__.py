@@ -21,7 +21,8 @@ def on_info(server: PluginServerInterface, info: Info):
     else:
         if client is None:
             return
-        client.try_start()
+        if not client.connecting and info.is_player:
+            client.try_start()
         if info.is_player and client.connected:
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
 

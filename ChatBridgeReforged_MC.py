@@ -9,7 +9,6 @@ import traceback
 import zipfile
 import zlib
 
-
 from binascii import b2a_base64, a2b_base64
 from Cryptodome.Cipher import AES
 from Cryptodome.Util.Padding import pad, unpad
@@ -27,7 +26,6 @@ PREFIX2 = '!!cbr'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 client: 'CBRTCPClient'
-client = None
 
 debug_mode = False
 CONFIG_PATH = 'config/ChatBridgeReforged_MC.json'
@@ -647,7 +645,8 @@ def process_info(server: 'ServerInterface', info: 'Info'):
     else:
         if client is None:
             return
-        client.try_start()
+        if not client.connecting and info.is_player:
+            client.try_start()
         if info.is_player and client.connected:
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
 
