@@ -77,7 +77,7 @@ class Plugin:
 
     def gen_metadata(self):
         try:
-            self.metadata = self.instance.METADATA
+            self.metadata = getattr(self.instance, "METADATA")
         except AttributeError:
             pass
 
@@ -101,6 +101,7 @@ class PluginManager:
     async def __get_plugin_path_list():
         plugins = ['./cbr/plugin/default_plugin.py']
         for entry in os.scandir('./plugins'):
+            entry: os.DirEntry
             if entry.is_file() and entry.name.endswith('.py'):
                 plugins.append(entry.path)
         return plugins
@@ -130,6 +131,7 @@ class PluginManager:
     async def get_disable_plugins():
         plugins = []
         for entry in os.scandir('./plugins'):
+            entry: os.DirEntry
             if entry.is_file() and entry.name.endswith('.disable'):
                 plugins.append(entry.name)
         return plugins
@@ -162,13 +164,13 @@ class PluginManager:
                 await self.plugin_run_event('on_load', plugin.id)
                 return True
             else:
-                return False
+                return None
         else:
             try:
                 plugin = Plugin(self.logger, plugin_path, plugin_file_name[:-3])
                 plugin.reload()
                 if plugin.id in self.plugins.keys():
-                    self.logger.error(f"Fail to load plugin: {plugin_file_name}, id: {plugin.id} duplicate")
+                    self.logger.error(f'Fail to load plugin: {plugin_file_name}, duplicate id: "{plugin.id}"')
                     return False
                 self.logger.info(f"Load plugin {plugin.id}@{plugin.version}")
                 self.plugin_dir.update({plugin_file_name: plugin.id})
@@ -246,23 +248,31 @@ class PluginManager:
         load_plugins = 0
         unload_plugins = 0
         reloaded_plugins = 0
-        for i in self.plugin_dir.keys():
+        failed_plugin = 0
+        for i in dict(self.plugin_dir).keys():
             for j in cache_list:
                 name = os.path.basename(j)
                 if i == name:
                     self.logger.debug(f"Check reload of {i}", "plugin")
                     cache_list.remove(j)
                     cache_plugin.remove(i)
-                    if await self.__load_plugin(j, name):
+                    result = await self.__load_plugin(j, name)
+                    if result:
                         reloaded_plugins += 1
+                    elif result is not None:
+                        await self.__remove_plugin(i, self.plugin_dir[i])
+                        failed_plugin += 1
                     break
+
         for i in cache_plugin:
             await self.unload_plugin(self.plugin_dir[i])
             unload_plugins += 1
         for i in cache_list:
-            await self.__load_plugin(i, os.path.basename(i))
-            load_plugins += 1
-        return load_plugins, unload_plugins, reloaded_plugins, len(self.plugins)
+            if await self.__load_plugin(i, os.path.basename(i)):
+                load_plugins += 1
+            else:
+                failed_plugin += 1
+        return load_plugins, unload_plugins, reloaded_plugins, failed_plugin, len(self.plugins)
 
     async def __remove_plugin(self, plugin_file_name, plugin_id):
         self.event_manager.remove_plugin(self.plugin_dir[plugin_file_name])

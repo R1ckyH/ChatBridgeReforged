@@ -27,7 +27,7 @@ async def reply(server: CBRInterface, info: MessageInfo, msg, chat=False):
     if info.source_client == "CBR" and not chat:
         msg = formatter.no_color_formatter(msg)
         for i in msg.splitlines():
-            server._server.logger.info(i)
+            server.cbr_logger.info(i)
     else:
         await trio.to_thread.run_sync(server.reply, info, msg)
 
@@ -38,15 +38,17 @@ async def unknown_cmd(command, server: CBRInterface, info: MessageInfo):
     command = '##CBR' + command
     msg = f"Unknown command, use {command} help for help message"
     if info.source_client == "CBR":
-        server._server.logger.error(msg)
+        server.cbr_logger.error(msg)
     else:
         await reply(server, info, msg, chat=True)
 
 
-def reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num):
+def reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, failed_plugin, num):
     msg = f"Total plugin amount: {num}"
-    if loaded_plugin == 0 and unloaded_plugin == 0 and reloaded_plugin == 0:
+    if loaded_plugin == 0 and unloaded_plugin == 0 and reloaded_plugin == 0 and failed_plugin == 0:
         msg = "0 plugin changed, " + msg
+    if failed_plugin != 0:
+        msg = f"{failed_plugin} plugin fail to load, " + msg
     if reloaded_plugin != 0:
         msg = f"{reloaded_plugin} plugin reloaded, " + msg
     if loaded_plugin != 0:
@@ -68,16 +70,16 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
         if length == 1 or args[1] == 'help':
             await reply(server, info, self.get_help_msg('reload'), chat=True)
         elif args[1] == 'plugin' or args[1] == 'plg':
-            load_plugin, unload_plugin, reloaded_plugin, num = await self.plugin_manager.check_reload_all_plugins()
-            msg = reload_result(load_plugin, unload_plugin, reloaded_plugin, num)
+            load_plugin, unload_plugin, reloaded_plugin, failed_plugin, num = await self.plugin_manager.check_reload_all_plugins()
+            msg = reload_result(load_plugin, unload_plugin, reloaded_plugin, failed_plugin, num)
             await reply(server, info, msg)
         elif (args[1] == 'config' or args[1] == 'conf') and False:
             pass  # TODO reload config(next version)?
             # self.server.config.init_config(self.logger)
             # await reply("Config reloaded", server, info)
         elif args[1] == 'all':
-            loaded_plugin, unloaded_plugin, reloaded_plugin, num = await self.plugin_manager.check_reload_all_plugins()
-            msg = reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, num)
+            loaded_plugin, unloaded_plugin, reloaded_plugin, failed_plugin, num = await self.plugin_manager.check_reload_all_plugins()
+            msg = reload_result(loaded_plugin, unloaded_plugin, reloaded_plugin, failed_plugin, num)
             await reply(server, info, msg)
         else:
             await unknown_cmd('reload', server, info)

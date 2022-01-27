@@ -5,10 +5,10 @@ from cbr.lib.logger import CBRLogger
 
 
 class MessageInfo:
-    def __init__(self, client: str, message: str, player: str = None, client_type='', logger: CBRLogger = None):
-        self.source_client = client  # TODO: split client and source client
+    def __init__(self, client, message, sender=None, client_type='', logger: CBRLogger = None):
+        self.source_client: str = client  # TODO: split client and source client
         self.content = message
-        self.sender = player
+        self.sender: str = sender
         self._logger = logger
         self.client_type = client_type
         self._send_to_servers = True

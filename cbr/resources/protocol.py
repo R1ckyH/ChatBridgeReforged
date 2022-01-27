@@ -1,6 +1,6 @@
 """
-data pack here
-Credit: Fallen-Breath https://github.com/Fallen-Breath https://github.com/TISUnion/ChatBridge
+    Data pack here
+    Credit: Fallen-Breath https://github.com/Fallen-Breath https://github.com/TISUnion/ChatBridge
 """
 import sys
 
@@ -99,7 +99,9 @@ clientA -> server -> clientB
     "function": "FUNCTION_NAME"
     "keys":
     [
-        "KEY1", "KEY2", True // only support string and bool
+        "KEY1",
+        "KEY2",
+        True // only support string and bool
         // must with order
     ]
     "result":

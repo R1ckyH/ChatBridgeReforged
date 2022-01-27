@@ -87,8 +87,7 @@ class CBRTCPClient(Network):
 
     def start(self, info):
         self.cancelled = False
-        self.logger.print_msg(f"Connecting to server with client {self.name}", 2, info, server=self.server)
-        self.logger.info(f'Open connection to {self.config.host_name}:{self.config.host_port}')
+        self.logger.print_msg(f"Connecting to server '{self.config.host_name}:{self.config.host_port}' with client name {self.name}", 2, info=info, server=self.server)
         self.logger.info(f'version : {VERSION}, lib version : {LIB_VERSION}')
         self.socket = soc.socket()
         try:
