@@ -1,6 +1,6 @@
 {
     "id": "chatbridgereforged_mc",
-    "version": "0.0.2-dev022",
+    "version": "0.1.0-dev023",
     "name": "ChatBridgeReforged_MC",
     "description": {
 		"en_us": "Reforged of ChatBridge, interaction with other clients(such as minecraft server, discord bots or other custom clients).",
