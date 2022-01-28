@@ -3,13 +3,11 @@ cqhttp Document
 
 **it is a self decision to use cqhttp or not**
 
-**CBR cqhttp client is available for most of the one_bot v9 qq bot**
+**CBR cqhttp client is available for most of the one_bot v9 qq bot with websocket**
 
-**CQHTTP of CBR is planning to change**
+it is managed by `plugin/cqhttp.py` or `plugin/ChatBridgeReforged_cqhttp.py` right now.
 
-it is managed by plugin/cqhttp.py right now.
-
-To use cqhttp in CBR, you should use the plugin `cqhttp.py`, 
+To use cqhttp in CBR, you should use the plugin `cqhttp.py` or `ChatBridgeReforged_cqhttp.py` as plugin, 
 
 Of course, you can modify it if you want
 
@@ -26,10 +24,10 @@ Things you need to do
 - CBR client is a websocket client connect to cq bot
 
 
-- edit `host`, `port`, and `access-token` in cqhttp's config
+- edit `host`, `port`, and `access-token` in `CQHTTP`'s config
 
 
 - edit the `config` of CBR `ChatBridgeReforged_cqhttp.py`.
 
 
-- edit the `config/cqhttp.json` of CBR plugin `cqhttp.py`.
+- edit the `config/cqhttp.json` of CBR plugin `cqhttp.py` or `ChatBridgeReforged_cqhttp.py`.
