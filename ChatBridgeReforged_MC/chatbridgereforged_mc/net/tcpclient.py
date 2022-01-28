@@ -4,6 +4,7 @@ import threading
 import time
 
 from chatbridgereforged_mc.lib.config import Config
+from chatbridgereforged_mc.lib.guardian import PingGuardian, RestartGuardian
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.net.encrypt import AESCryptor
 from chatbridgereforged_mc.net.process import ClientProcess
@@ -62,6 +63,10 @@ class CBRTCPClient(Network):
         self.timeout = config.timeout
         super().__init__(config.aes_key, self)
         self.process = ClientProcess(self)
+        if config.auto_restart:
+            self.restart_guardian = RestartGuardian(logger, self)
+        self.ping_guardian: PingGuardian
+        self.ping_guardian = None
 
     def setup(self, new_config: Config):
         self.config.init_all_config()
@@ -99,6 +104,8 @@ class CBRTCPClient(Network):
             return
         self.connected = True
         self.connecting = False
+        if self.config.auto_restart:
+            self.restart_guardian.restart()
         self.socket.settimeout(self.timeout)
         self.handle_echo()
 
@@ -112,6 +119,8 @@ class CBRTCPClient(Network):
             self.connecting = False
 
     def close_connection(self, target=''):
+        self.restart_guardian.stop()
+        self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
             self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
@@ -133,17 +142,6 @@ class CBRTCPClient(Network):
         time.sleep(0.1)
         self.logger.print_msg(f"CBR status: Online = {self.connected}", 2, info, server=self.server)
 
-    def keep_alive(self):
-        while self.socket is not None and self.connected:
-            self.logger.debug("keep alive")
-            for i in range(self.config.ping_time):
-                time.sleep(1)
-                if not self.connected:
-                    return
-            ping_msg = json.dumps({"action": "keepAlive", "type": "ping"})
-            if self.connected:
-                self.send_msg(self.socket, ping_msg)
-
     def login(self, name, password):
         msg = {"action": "login", "name": name, "password": password, "lib_version": LIB_VERSION, "type": CLIENT_TYPE}
         self.send_msg(self.socket, json.dumps(msg))
@@ -160,7 +158,8 @@ class CBRTCPClient(Network):
 
     def handle_echo(self):
         self.login(self.name, self.password)
-        threading.Thread(target=self.keep_alive, name='CBRPing', daemon=True).start()
+        self.ping_guardian = PingGuardian(self, self.logger, self.config)
+        self.ping_guardian.start()
         while self.socket is not None and self.connected:
             try:
                 self.client_process()
@@ -178,3 +177,6 @@ class CBRTCPClient(Network):
                     self.logger.bug_log()
                 break
         self.connected = False
+        if self.config.auto_restart:
+            self.restart_guardian.reset = False
+        self.ping_guardian.stop()

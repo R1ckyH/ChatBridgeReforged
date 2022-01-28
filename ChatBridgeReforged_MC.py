@@ -40,7 +40,6 @@ client_color = '6'  # minecraft color code
 ping_time = 60
 timeout = 120
 wait_time = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
-end = False
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
@@ -342,6 +341,7 @@ class ClientProcess:
         while time.time() - start <= 2:
             if self.end != 0:
                 return
+            time.sleep(0.00001)
         self.end = -1
 
     def ping_log(self, ping_ms, info=None, server=None):
@@ -510,11 +510,14 @@ class CBRTCPClient(Network):
         self.connected = False
         self.cancelled = False
         self.connecting = False
-        self.success_connect = False
         self.name = config.name
         self.password = config.password
         super().__init__(config.aes_key, self)
         self.process = ClientProcess(self)
+        if auto_restart:
+            self.restart_guardian = RestartGuardian(logger, self)
+        self.ping_guardian: PingGuardian
+        self.ping_guardian = None
 
     def setup(self, new_config: Config):
         self.config.init_all_config()
@@ -550,7 +553,8 @@ class CBRTCPClient(Network):
             return
         self.connected = True
         self.connecting = False
-        self.success_connect = True
+        if auto_restart:
+            self.restart_guardian.restart()
         self.socket.settimeout(timeout)
         self.handle_echo()
 
@@ -564,6 +568,8 @@ class CBRTCPClient(Network):
             self.connecting = False
 
     def close_connection(self, target=''):
+        self.restart_guardian.stop()
+        self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
             self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
@@ -585,17 +591,6 @@ class CBRTCPClient(Network):
         time.sleep(0.1)
         self.logger.print_msg(f"CBR status: Online = {self.connected}", 2, info, server=self.server)
 
-    def keep_alive(self):
-        while self.socket is not None and self.connected and not end:
-            self.logger.debug("keep alive")
-            for i in range(ping_time):
-                time.sleep(1)
-                if not self.connected:
-                    return
-            ping_msg = json.dumps({"action": "keepAlive", "type": "ping"})
-            if self.connected:
-                self.send_msg(self.socket, ping_msg)
-
     def login(self, name, password):
         msg = {"action": "login", "name": name, "password": password, "lib_version": LIB_VERSION, "type": CLIENT_TYPE}
         self.send_msg(self.socket, json.dumps(msg))
@@ -612,7 +607,8 @@ class CBRTCPClient(Network):
 
     def handle_echo(self):
         self.login(self.name, self.password)
-        threading.Thread(target=self.keep_alive, name='CBRPing', daemon=True).start()
+        self.ping_guardian = PingGuardian(self, self.logger)
+        self.ping_guardian.start()
         while self.socket is not None and self.connected:
             try:
                 self.client_process()
@@ -630,6 +626,9 @@ class CBRTCPClient(Network):
                     self.logger.bug_log()
                 break
         self.connected = False
+        if auto_restart:
+            self.restart_guardian.reset = False
+        self.ping_guardian.stop()
 
 
 def process_info(server: 'ServerInterface', info: 'Info'):
@@ -650,7 +649,104 @@ def process_info(server: 'ServerInterface', info: 'Info'):
             client.send_msg(client.socket, msg_json_formatter(client.name, info.player, info.content))
 
 
-def on_info(server: 'ServerInterface', info: 'Info'):
+class GuardianBase:
+    def __init__(self, logger: CBRLogger, name=''):
+        self.logger = logger
+        self.reset = False
+        self.end = False
+        self.name = name
+
+    def start(self):
+        threading.Thread(target=self.run, name=f"Restart_Guardian_{self.name}", daemon=True).start()
+        self.logger.debug(f"Thread Restart_Guardian_{self.name} started")
+
+    def run(self):
+        self.reset = False
+        while not self.end:
+            self.wait_restart()
+
+    def stop(self):
+        self.end = True
+        self.reset = True
+
+    def restart(self):
+        self.reset = True
+
+    def wait_restart(self):
+        pass
+
+    def stopwatch(self, sec):
+        for i in range(sec):
+            time.sleep(i)
+            if self.reset:
+                return False
+        return True
+
+
+class PingGuardian(GuardianBase):
+    def __init__(self, client_class: CBRTCPClient, logger):
+        super().__init__(logger, "ping")
+        self.client = client_class
+
+    def wait_restart(self):
+        self.logger.debug("keep alive")
+        for i in range(ping_time):
+            time.sleep(1)
+            if self.end:
+                return
+        ping_msg = json.dumps({"action": "keepAlive", "type": "ping"})
+        if self.client.connected:
+            self.client.send_msg(self.client.socket, ping_msg)
+
+
+class RestartGuardian(GuardianBase):
+    def __init__(self, logger, client_class: CBRTCPClient):
+        super().__init__(logger, "CBR_client")
+        self.client = client_class
+
+    def _client_start(self):
+        self.logger.debug(f"Try start")
+        self.client.try_start(auto_connect=True)
+
+    def wait_restart(self):
+        for i in wait_time:
+            finish = self.stopwatch(i)
+            if finish and not self.reset:
+                self._client_start()
+            else:
+                self.logger.debug(f"Auto_restart reset after 5 sec")
+                time.sleep(5)
+                return
+        while not self.end:
+            finish = self.stopwatch(3600)
+            if finish and not self.reset:
+                self._client_start()
+            else:
+                self.logger.debug(f"Auto_restart reset after 5 sec")
+                time.sleep(5)
+                return
+
+
+def main(server=None):
+    global client
+    logger = CBRLogger()
+    config = Config(logger, server)
+    config.init_all_config()
+    client = CBRTCPClient(config, logger, server)
+    logger.load(client)
+    client.try_start()
+    if auto_restart:
+        client.restart_guardian.start()
+    if server is None:
+        while True:
+            input_message = input()
+            try:
+                client.process.input_process(input_message)
+            except Exception:
+                client.logger.bug_log()
+
+
+def on_info(server: 'PluginServerInterface', info: 'Info'):
     threading.Thread(name="CBR_Process", target=process_info, args=(server, info), daemon=True).start()
 
 
@@ -665,29 +761,7 @@ def on_player_left(server, name, info=None):
 
 
 def on_unload(server):
-    global end
-    end = True
     client.close_connection()
-
-
-def main(server=None):
-    global client, end
-    end = False
-    logger = CBRLogger()
-    config = Config(logger, server)
-    config.init_all_config()
-    client = CBRTCPClient(config, logger, server)
-    logger.load(client)
-    client.try_start()
-    if auto_restart:
-        threading.Thread(target=restart_loop, name="auto_restart", daemon=True).start()
-    if server is None:
-        while True:
-            input_message = input()
-            try:
-                client.process.input_process(input_message)
-            except Exception:
-                client.logger.bug_log()
 
 
 def on_load(server, old):
@@ -700,35 +774,10 @@ def on_load(server, old):
         server.register_help_message(PREFIX, "ChatBridgeReforged")
     else:
         server.add_help_message(PREFIX, "ChatBridgeReforged")
+    global client
+    client = None
     time.sleep(0.5)
     main(server)
-
-
-def wait_restart():
-    client.success_connect = False
-    for i in wait_time:
-        time.sleep(i)
-        if not client.success_connect and not client.connected:
-            client.logger.debug(f"Try start")
-            client.try_start(auto_connect=True)
-        else:
-            client.logger.debug(f"Auto_restart reset after 5 sec")
-            time.sleep(5)
-            return
-    while True:
-        if not client.success_connect and not client.connected:
-            time.sleep(3600)
-            client.logger.debug(f"Try start")
-            client.try_start(auto_connect=True)
-        else:
-            client.logger.debug(f"Auto_restart reset after 5 sec")
-            time.sleep(5)
-            return
-
-
-def restart_loop():
-    while not end:
-        wait_restart()
 
 
 if __name__ == '__main__':

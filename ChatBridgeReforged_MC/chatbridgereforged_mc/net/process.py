@@ -42,6 +42,7 @@ class ClientProcess:
         while time.time() - start <= 2:
             if self.end != 0:
                 return
+            time.sleep(0.00001)
         self.end = -1
 
     def ping_log(self, ping_ms, info=None, server=None):
