@@ -122,6 +122,12 @@ class Process:
                 if info.is_send_message():
                     await self.msg_mc_server(self.formatter.message_formatter(client, player, msg), current_client)
                     self.logger.chat(message)
+                args = msg.split(" ")
+                if player == '' and len(args) == 3 and info.client_type == 'mc':
+                    if args[1] == "joined":
+                        await self.plugin_manager.run_event("on_player_joined", args[0], info, nursery=nursery)
+                    elif args[1] == "left":
+                        await self.plugin_manager.run_event("on_player_left", args[0], info, nursery=nursery)
             else:
                 if info.is_send_message():
                     return False

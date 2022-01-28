@@ -78,7 +78,8 @@ class PluginEventManager:
         self.__register_events("on_unload")
         self.__register_events("on_message")
         self.__register_events("on_command")
-        # TODO: on_player_join and on_player_left(may do)
+        self.__register_events("on_player_joined")
+        self.__register_events("on_player_left")
         # TODO: register event by plugin(may not do)(may do in 1.0)
 
     def __register_events(self, event):

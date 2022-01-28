@@ -85,10 +85,10 @@ class CBRTCPServer(Network):
 
     async def main(self):
         try:
-            await self.plugin_manager.reload_all_plugins()
             async with trio.open_nursery() as self.nursery:
                 self.nursery.start_soon(self.start_server)
                 self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
+                await self.plugin_manager.reload_all_plugins()
                 self.nursery.start_soon(partial(trio.to_thread.run_sync, self.input_process, cancellable=True))
         except KeyboardInterrupt:
             await self.stop()
