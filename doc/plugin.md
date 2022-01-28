@@ -18,8 +18,8 @@ When the server has trigger specific event, CBR will call relevant `Function` of
 | on_unload(CBRInterface)                             | A plugin gets unloaded                       | YES       | Clean up or turn off functionality of the old plugin    |
 | on_message(CBRInterface, MessageInfo)               | A message action have been receive in server | YES       | Response to the message from the clients                |
 | on_command(CBRInterface, MessageInfo)               | A command action have been receive in server | YES       | Response to the command from the server                 |
-| on_player_joined(CBRInterface, player, MessageInfo) | A player joined the server                   | No        | Response to player joining with the given info instance |
-| on_player_left(CBRInterface, player, MessageInfo)   | A player left the server                     | No        | Response to player leaving                              |
+| on_player_joined(CBRInterface, player, MessageInfo) | A player joined the server                   | Yes       | Response to player joining with the given info instance |
+| on_player_left(CBRInterface, player, MessageInfo)   | A player left the server                     | Yes       | Response to player leaving                              |
 
 Note: the plugin doesn't need to implement all methods above. **Just implement what you need**
 
@@ -121,6 +121,22 @@ The attributes of the info object are:
 | source_client | `CBR`                  |
 | client_type   | ``                     |
 | is_player()   | False                  |
+
+------
+
+For the following message from the message's standard output：
+
+`[CBR] [09:00:00] [MainThread/INFO]: [survival] rickyho555 joined survival`
+
+The attributes of the info object are:
+
+| Attribute     | Value                        |
+|---------------|------------------------------|
+| content       | `rickyho555 joined survival` |
+| sender        | ``                           |
+| source_client | `survival`                   |
+| client_type   | `mc`                         |
+| is_player()   | False                        |
 
 ## Some tips for writing plugin
 
