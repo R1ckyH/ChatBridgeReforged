@@ -210,16 +210,16 @@ class HeadingLogger:
         self.__add_msg += ' '
 
     def info(self, msg):
-        self.logger.info(self.__add_msg + msg)
+        self.logger.info(self.__add_msg + str(msg))
 
     def error(self, msg):
-        self.logger.error(self.__add_msg + msg)
+        self.logger.error(self.__add_msg + str(msg))
 
     def debug(self, msg):
-        self.logger.debug(self.__add_msg + msg)
+        self.logger.debug(self.__add_msg + str(msg))
 
     def chat(self, msg):
-        self.logger.chat(self.__add_msg + msg)
+        self.logger.chat(self.__add_msg + str(msg))
 
     def bug_log(self, error=False):
         self.error('bug exist')
@@ -539,7 +539,8 @@ class ClientProcess:
                     return
                 for i in msg['message'].splitlines():
                     message = message_formatter(msg['client'], msg['player'], i)
-                    self.logger.print_msg(message, 0)
+                    if self.server is None:
+                        self.logger.print_msg(message, 0)
                 for i in range(6):
                     msg['message'] = msg['message'].replace('§' + str(i), '').replace('§' + chr(97 + i), '')
                 msg['message'] = msg['message'].replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '')
@@ -862,11 +863,13 @@ class RestartGuardian(GuardianBase):
 
 
 def reload():
+    global CQ_bot
     local_logger.print_msg("Reload ChatBridgeReforged Client now", 2)
     for i in clients.values():
         i.close_connection()
     init_clients(local_logger)
     time.sleep(0.1)
+    CQ_bot.keep_running = False
     local_logger.print_msg("Reload Config", 2)
     for i in clients.values():
         i.try_start()
@@ -874,6 +877,10 @@ def reload():
     if auto_restart:
         restart_guardian.reset = False
         restart_guardian.targets = list(clients.values())
+    server = CQ_bot.server
+    config = CQ_bot.config
+    CQ_bot = CQClient(config, local_logger, clients, server)
+    threading.Thread(target=CQ_bot.start, name="CQHTTP", daemon=True).start()
     for i in clients.values():
         local_logger.print_msg(f"Status: '{i.name}' Online = {i.connected}", 2)
 
@@ -1003,6 +1010,8 @@ def on_command(server: 'CBRInterface', info: 'MessageInfo'):
         msg = replace_message(info.content)
         if not custom_check_send('less', msg, info.source_client, info.sender, server):
             custom_check_send('full', msg, info.source_client, info.sender, server)
+    elif info.content.startswith("##CQ"):
+        input_process(info.content.replace("##CQ ", ""))
 
 
 def on_load(server: 'CBRInterface'):
@@ -1010,6 +1019,16 @@ def on_load(server: 'CBRInterface'):
     if os.path.exists(config_path):
         with open(config_path, 'r', encoding='utf-8') as config:
             data = json.load(config)
+        change = False
+        if isinstance(data['full_message_group_client'], str):
+            change = True
+            data['full_message_group_client'] = [data['full_message_group_client']]
+        if isinstance(data['less_message_group_client'], str):
+            change = True
+            data['less_message_group_client'] = [data['less_message_group_client']]
+        if change:
+            with open(config_path, 'w', encoding='utf-8') as config:
+                json.dump(data, config, indent=4)
     else:
         with open(config_path, 'w', encoding='utf-8') as config:
             json.dump(DEFAULT_MSG_CONFIG, config, indent=4)

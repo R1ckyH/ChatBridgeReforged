@@ -153,6 +153,8 @@ class CBRTCPServer(Network):
                 msg = input()
             except EOFError:
                 return
+            except UnicodeDecodeError:
+                self.logger.bug()
             try:
                 trio.from_thread.run(self.process.msg_process, msg, self.nursery)
             except Exception:

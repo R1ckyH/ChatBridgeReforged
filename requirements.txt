@@ -2,5 +2,4 @@ trio
 mcdreforged
 pycryptodomex
 # for cqhttp
-websocket
 websocket-client
