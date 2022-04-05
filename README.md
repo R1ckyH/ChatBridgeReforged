@@ -3,6 +3,7 @@
 - only tested for python 3.7 and 3.8
 - python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
+- Please give a **star** if you like this repository
 
   ![image](./CBR.svg)
 
@@ -31,9 +32,7 @@ Start server with run `ChatBridgeReforged_Server.py`
 
 put `ChatBridgeReforged_MC.py` in MCDR's plugins file
 
-Setup `config.yml` in previous file and
-
-`config/ChatBridgeReforged_MC.json` in MCDR
+Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json` in MCDR's directory
 
 
 ## Config
@@ -84,4 +83,4 @@ Setup `config.yml` in previous file and
 
 [Plugin document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/plugin.md)
 
-Plugin Catalogue will launch after release
+Plugin Catalogue will launch soon

@@ -4,7 +4,7 @@ copy and edit form [MCDR](https://github.com/Fallen-Breath/MCDReforged)
 
 Thx [Fallen_Breath](https://github.com/Fallen-Breath)
 
-Like MCDaemon and MCDR's single file plugin, a CBR plugin is a `.py` file locating in the `plugins/` folder. CBR will automatically load every plugin inside this folder
+Like MCDaemon and 1MCDR's single file plugin, a CBR plugin is a `.py` file locating in the `plugins/` folder. CBR will automatically load every plugin inside this folder
 
 There is a sample plugin named `not_sample_plugin.py` in the `plugins/` folder, and you can check its content for reference
 
@@ -68,11 +68,10 @@ It also has these following functions:
 | set_permission_level(player, level)    | todo                                                                                                                                                                                                                                                  |
 | register_help_message(prefix, message) | Add a help message with prefix `prefix` and message `message` to the `##help` data of CBR. The `##help` data of CBR will be reset before plugin reloading **(todo)** . **It is recommended to add relevant information in `on_load ()` method call.** |
 | get_client_type()                      | get `type` that client register at login. `client` will **register** `type` itself while **login** if need                                                                                                                                            |
-| is_client_online(client)               | Check `client` is **online** or not.                                                                                                                                                                                                                  |
-| get_online_clients()                   | get list of `online` clients                                                                                                                                                                                                                          |
 | is_mc_client(client)                   | Check `client` **register** as `mc` or not.                                                                                                                                                                                                           |
-| get_mc_clients()                       | get list of `mc` clients                                                                                                                                                                                                                              |
 | is_client_online(client)               | Check `client` is **online** or not                                                                                                                                                                                                                   |
+| get_online_clients()                   | get list of `online` clients                                                                                                                                                                                                                          |
+| get_mc_clients()                       | get list of `mc` clients                                                                                                                                                                                                                              |
 | get_online_mc_clients()                | get list of **online** `mc` clients                                                                                                                                                                                                                   |
 
 ### info
@@ -137,6 +136,11 @@ The attributes of the info object are:
 | source_client | `survival`                   |
 | client_type   | `mc`                         |
 | is_player()   | False                        |
+
+### Rtext
+
+Rtext document [here](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/rtext.md)
+
 
 ## Some tips for writing plugin
 
