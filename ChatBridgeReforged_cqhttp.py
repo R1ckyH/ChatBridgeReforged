@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import socket as soc
 import struct
 import threading
@@ -82,10 +83,13 @@ def help_formatter(mcdr_prefix, command, first_msg, click_msg, use_command=None)
 
 
 def message_formatter(client_name, player, msg):
+    message = ""
+    if client_name != "CBR":
+        message += f"[{client_name}] "
     if player != "":
-        message = f"[{client_name}] <{player}> {msg}"  # chat message
+        message += f"<{player}> {msg}"  # chat message
     else:
-        message = f"[{client_name}] {msg}"
+        message += f"{msg}"
     return message
 
 
@@ -150,9 +154,7 @@ class CBRLogger:
         self.out_log(msg, debug=True)
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
-        for i in range(6):
-            msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
+        msg = re.sub("§.", "", msg)
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
             msg = heading + '[CHAT]: ' + msg
@@ -541,9 +543,7 @@ class ClientProcess:
                     message = message_formatter(msg['client'], msg['player'], i)
                     if self.server is None:
                         self.logger.print_msg(message, 0)
-                for i in range(6):
-                    msg['message'] = msg['message'].replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-                msg['message'] = msg['message'].replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '')
+                msg['message'] = re.sub("§.", "", msg['message'])
                 message = message_formatter(msg['client'], msg['player'], msg['message'])
                 CQ_bot.send_text(message, group_id=self.client.react_group)
             elif msg['action'] == 'stop':

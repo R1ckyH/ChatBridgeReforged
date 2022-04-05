@@ -4,8 +4,10 @@
     Don't imitate it
     ##################
 """
+import sys
 import threading
 import trio
+
 
 from cbr.lib.config import CHATBRIDGEREFORGED_VERSION
 from cbr.plugin.info import MessageInfo
@@ -24,6 +26,7 @@ METADATA = {
 
 
 async def reply(server: CBRInterface, info: MessageInfo, msg, chat=False):
+    msg = "§7[§6CBR§7] " + msg
     if info.source_client == "CBR" and not chat:
         msg = formatter.no_color_formatter(msg)
         for i in msg.splitlines():
@@ -218,4 +221,5 @@ def on_command(server: CBRInterface, info: MessageInfo):  # not recommend doing,
 
 
 def on_load(server: CBRInterface):
+    sys.path.append('plugins/')
     server.register_help_message("##CBR", "CBR control command")

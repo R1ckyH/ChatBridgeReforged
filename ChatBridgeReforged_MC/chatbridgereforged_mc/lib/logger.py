@@ -1,3 +1,4 @@
+import re
 import traceback
 
 from datetime import datetime
@@ -43,9 +44,7 @@ class CBRLogger:
         self.out_log(msg, debug=True)
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
-        for i in range(6):
-            msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
+        msg = re.sub("§.", "", msg)
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
             msg = heading + '[CHAT]: ' + msg
