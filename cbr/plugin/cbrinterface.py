@@ -1,11 +1,13 @@
 """
 CBR ServerInterface
 """
+import re
 import trio
 
 from typing import TYPE_CHECKING
 
 from cbr.resources import formatter
+from cbr.plugin.rtext import rtext_json_to_text
 
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
@@ -111,17 +113,7 @@ class CBRInterface:
         """
             send message to target client
         """
-        if not self.__running():
-            self.logger.error("Server closed, not allow to send anything")
-            return
-        if target == "CBR":
-            self.__split_msg(msg)
-            return
-        if self.__exist(target) and self.is_client_online(target):
-            stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, "", target, trio_token=self.__token)
-        else:
-            self.logger.error(f"client {target} not found or not connected")
+        self.send_custom_message("CBR", target, msg)
 
     def tell_message(self, target, receiver, msg):
         """
@@ -129,36 +121,15 @@ class CBRInterface:
 
             may not useful in some specific client type
         """
-        if not self.__running():
-            self.logger.error("Server closed, not allow to send anything")
-            return
-        if target == "CBR":
-            self.__split_msg(msg)
-            return
-        if self.__exist(target) and self.is_client_online(target):
-            stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, receiver, target, trio_token=self.__token)
-        else:
-            self.logger.error(f"client {target} not found or not connected")
-            # TODO: raise Error(to be confirm)
+        self.send_custom_message("CBR", target, msg, receiver=receiver)
 
     def reply(self, info: 'MessageInfo', msg):
         """
             reply to client or player(if exist)
         """
-        if not self.__running():
-            self.logger.error("Server closed, not allow to send anything")
-            return
-        if info.source_client == "CBR":
-            self.__split_msg(msg)
-            return
         target = info.source_client
         receiver = info.sender
-        if self.__exist(target) and self.is_client_online(target):
-            stream = self._server.clients[target].stream
-            trio.from_thread.run(self._server.send_message, stream, "CBR", "", msg, receiver, target, trio_token=self.__token)
-        else:
-            self.logger.error(f"client {target} not found or not connected")
+        self.send_custom_message("CBR", target, msg, receiver=receiver)
 
     def send_custom_message(self, self_client, target, msg, source_player='', receiver=''):
         """
@@ -166,14 +137,22 @@ class CBRInterface:
         """
         if not self.__running():
             return
-        if target == "CBR":
-            self.__split_msg(msg)
-            return
-        if self.__exist(target) and self.is_client_online(target):
+        if self.is_client_online(target):
+            if hasattr(msg, "to_json_str"):
+                if self.is_mc_client(target):
+                    msg = msg.to_json_str()
+                else:
+                    msg = rtext_json_to_text(msg.to_json_str())
+            elif not self.is_mc_client(target):
+                msg = re.sub("§.", "", msg)
+            if target == "CBR":
+                self.__split_log(msg)
+                return
             stream = self._server.clients[target].stream
             trio.from_thread.run(self._server.send_message, stream, self_client, source_player, msg, receiver, target, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
+        # TODO: raise Error(to be confirm)
 
     def execute_command(self, target, command):
         """
@@ -181,7 +160,7 @@ class CBRInterface:
         """
         if not self.__running():
             return None
-        if self.__exist(target) and self.is_client_online(target):
+        if self.is_client_online(target):
             stream = self._server.clients[target].stream
             trio.from_thread.run(self._server.send_command, stream, command, target, trio_token=self.__token)
         else:
@@ -191,9 +170,10 @@ class CBRInterface:
         """
             execute mcdr command in a cbr client without return
         """
+        # TODO: split mcdr command and normal command
         if not self.__running():
             return
-        if self.__exist(target) and self.is_client_online(target):
+        if self.is_client_online(target):
             stream = self._server.clients[target].stream
             trio.from_thread.run(self._server.send_command, stream, command, target, trio_token=self.__token)
         else:
@@ -207,7 +187,7 @@ class CBRInterface:
         """
         if not self.__running():
             return None
-        if self.__exist(target) and self.is_client_online(target):
+        if self.is_client_online(target):
             return trio.from_thread.run(self.__wait_cmd_result, target, command, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
@@ -241,7 +221,7 @@ class CBRInterface:
         pass
         if not self.__running():
             return None
-        if self.__exist(target) and self.is_client_online(target):
+        if self.is_client_online(target):
             return trio.from_thread.run(self.__wait_api_result, target, plugin_id, function_name, keys, trio_token=self.__token)
         else:
             self.logger.error(f"client {target} not found or not connected")
@@ -265,7 +245,7 @@ class CBRInterface:
         else:
             return False
 
-    def __split_msg(self, msg):
+    def __split_log(self, msg):
         for i in msg.splitlines():
             if self.__current_plugin_id == "ChatBridgeReforged":
                 self.logger.chat(i)

@@ -8,6 +8,11 @@ from cbr.lib.logger import CBRLogger
 from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
+from cbr.plugin.rtext import *
+
+
+def rtext_cmd(txt, msg, cmd):
+    return RText(txt).h(msg).c(RAction.suggest_command, cmd)
 
 
 class Clients:
@@ -163,7 +168,9 @@ class CBRTCPServer(Network):
     def get_register_help_msg(self):
         msg = ''
         for i in self.__register_help_msg:
-            msg = msg + f"{i['prefix']}: §f{i['command']}\n"
+            if msg != "":
+                msg += "\n"
+            msg += rtext_cmd(f"§7{i['prefix']}", i["plugin_id"], i['prefix']) + f"§f: {i['msg']}"
         return msg
 
     def add_register_help_msg(self, plugin_id, prefix, msg):
@@ -171,7 +178,7 @@ class CBRTCPServer(Network):
             if self.__register_help_msg[i]['prefix'] == prefix:
                 self.__register_help_msg.pop(i)
                 break
-        self.__register_help_msg.append({'prefix': prefix, 'command': msg, 'plugin_id': plugin_id})
+        self.__register_help_msg.append({'prefix': prefix, 'msg': msg, 'plugin_id': plugin_id})
 
     def del_register_help_msg(self, plugin_id):
         for i in range(len(self.__register_help_msg)):

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import socket as soc
 import struct
 import threading
@@ -74,10 +75,13 @@ def help_formatter(mcdr_prefix, command, first_msg, click_msg, use_command=None)
 
 
 def message_formatter(client_name, player, msg):
+    message = ""
+    if client_name != "CBR":
+        message += f"§7[§{client_color}{client_name}§7] "
     if player != "":
-        message = f"§7[§{client_color}{client_name}§7] <{player}> {msg}"  # chat message
+        message += f"<{player}> {msg}"  # chat message
     else:
-        message = f"§7[§{client_color}{client_name}§7] {msg}"
+        message += f"{msg}"
     return message
 
 
@@ -132,9 +136,7 @@ class CBRLogger:
         self.out_log(msg, debug=True)
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
-        for i in range(6):
-            msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-        msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
+        msg = re.sub("§.", "", msg)
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
             msg = heading + '[CHAT]: ' + msg
@@ -406,10 +408,28 @@ class ClientProcess:
                 if msg['message'] is None:
                     self.logger.info(str(msg['message']))
                     return
-                for i in msg['message'].splitlines():
-                    message = message_formatter(msg['client'], msg['player'], i)
-                    self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server, not_spam=True,
-                                          chat=True)
+                try:
+                    add_text = ""
+                    if msg["client"] != "CBR":
+                        add_text = f"§7[§{client_color}{msg['client']}§7]§r "
+                    if msg["player"] != "":
+                        add_text += f"<{msg['player']}>§r "
+                    message = msg['message'].replace("\\n", f"\\n{add_text}")
+                    data = json.loads(message)
+                    if type(data) == list:
+                        data[1]["text"] = add_text + data[1]["text"]
+                    elif type(data) == dict:
+                        data["text"] = add_text + data[1]["text"]
+                    message = json.dumps(data)
+                    if msg["receiver"] != "":
+                        self.client.server.execute(f"execute run tellraw {msg['receiver']} {message}")
+                    else:
+                        self.client.server.execute(f"execute run tellraw @a {message}")
+                except Exception:
+                    for i in msg['message'].splitlines():
+                        message = message_formatter(msg['client'], msg['player'], i)
+                        self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server,
+                                              not_spam=True, chat=True)
             elif msg['action'] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
