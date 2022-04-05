@@ -1,8 +1,11 @@
-# test-plugin
-# similar with MCDR
+"""
+test-plugin
+similar with MCDR
+"""
 
-from cbr.plugin.info import MessageInfo
 from cbr.plugin.cbrinterface import CBRInterface
+from cbr.plugin.info import MessageInfo
+
 
 METADATA = {
     'id': 'not_sample_plugin',
@@ -17,7 +20,7 @@ METADATA = {
 def players_no_bot(player_list):
     player_string = ''
     for i in range(len(player_list)):
-        if not player_list[i].startswith("bot_") or player_list[i].startswith('Bot_'):
+        if not player_list[i].lower().startswith("bot_"):
             player_string += ', ' + player_list[i]
     if player_string.startswith(", "):
         return player_string[2:]
@@ -44,7 +47,7 @@ def list_player(server, info):
                 players.update({i: "Command Failed"})
         message = "- Online players:"
         for i in range(len(online_mc_client)):
-            message += f"\n[{online_mc_client[i]}]: {players[online_mc_client[i]]}"
+            message += f"\n§r[§6{online_mc_client[i]}§r] : {players[online_mc_client[i]]}"
         server.reply(info, message)
 
 
