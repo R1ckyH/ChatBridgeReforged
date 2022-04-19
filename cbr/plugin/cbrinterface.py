@@ -129,13 +129,16 @@ class CBRInterface:
         """
         target = info.source_client
         receiver = info.sender
-        self.send_custom_message("CBR", target, msg, receiver=receiver)
+        self.send_custom_message("CBR", target, msg, receiver=receiver)  # TODO: FIX reply of on_player_info
 
     def send_custom_message(self, self_client, target, msg, source_player='', receiver=''):
         """
             send message to target client with custom information
         """
         if not self.__running():
+            return
+        if target == "CBR":
+            self.__split_log(re.sub("§.", "", str(msg)))
             return
         if self.is_client_online(target):
             if hasattr(msg, "to_json_str"):
@@ -145,9 +148,6 @@ class CBRInterface:
                     msg = rtext_json_to_text(msg.to_json_str())
             elif not self.is_mc_client(target):
                 msg = re.sub("§.", "", msg)
-            if target == "CBR":
-                self.__split_log(msg)
-                return
             stream = self._server.clients[target].stream
             trio.from_thread.run(self._server.send_message, stream, self_client, source_player, msg, receiver, target, trio_token=self.__token)
         else:
