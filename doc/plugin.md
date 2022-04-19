@@ -137,7 +137,7 @@ The attributes of the info object are:
 | client_type   | `mc`                         |
 | is_player()   | False                        |
 
-### Rtext
+## Rtext
 
 Rtext document [here](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/rtext.md)
 

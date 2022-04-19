@@ -23,8 +23,9 @@ use `##help` to get plugin help command
 use `##CBR` to get help command
 
 #### CBR Server setup
-Pls put in file structure like
+Put all ChatBridgeReforged server files in a directory like
 ```
+ChatBridgeReforged
 -cbr
 -ChatBridgeReforged_Server.py
 ```
