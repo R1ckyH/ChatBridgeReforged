@@ -122,6 +122,8 @@ class ClientProcess:
                         data[1]["text"] = add_text + data[1]["text"]
                     elif type(data) == dict:
                         data["text"] = add_text + data[1]["text"]
+                    else:
+                        raise Exception
                     message = json.dumps(data)
                     if msg["receiver"] != "":
                         self.client.server.execute(f"execute run tellraw {msg['receiver']} {message}")
