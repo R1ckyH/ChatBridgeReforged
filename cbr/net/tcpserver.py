@@ -180,7 +180,7 @@ class CBRTCPServer(Network):
                 break
         self.__register_help_msg.append({'prefix': prefix, 'msg': msg, 'plugin_id': plugin_id})
 
-    def del_register_help_msg(self, plugin_id):
+    def deregister_help_msg(self, plugin_id):
         for i in range(len(self.__register_help_msg)):
             if self.__register_help_msg[i]['plugin_id'] == plugin_id:
                 self.__register_help_msg.pop(i)

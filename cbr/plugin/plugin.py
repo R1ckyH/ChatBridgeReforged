@@ -155,6 +155,7 @@ class PluginManager:
             plugin: Plugin = self.plugins[self.plugin_dir[plugin_file_name]]
             if plugin.check_change():
                 await self.plugin_run_event('on_unload', plugin.id)
+                self.server.deregister_help_msg(plugin.id)
                 self.logger.info(f"Reload plugin {plugin.id}@{plugin.version}")
                 try:
                     plugin.reload()
@@ -276,7 +277,7 @@ class PluginManager:
 
     async def __remove_plugin(self, plugin_file_name, plugin_id):
         self.event_manager.remove_plugin(self.plugin_dir[plugin_file_name])
-        self.server.del_register_help_msg(plugin_id)
+        self.server.deregister_help_msg(plugin_id)
         self.plugin_dir.pop(plugin_file_name)
         self.plugins.pop(plugin_id)
         self.logger.info(f"Unload plugin {plugin_file_name}")
