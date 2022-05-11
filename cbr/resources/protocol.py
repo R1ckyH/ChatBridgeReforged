@@ -6,7 +6,6 @@ import sys
 
 # Config
 # TODO: split mcdr and mc command(next version?)
-# TODO: Rtext(next version)
 '''
 plugin:##CBR
 数据包格式：

@@ -109,7 +109,7 @@ class CBRInterface:
         if client in self._server.clients.keys():
             return self._server.clients[client].type
 
-    def send_message(self, target, msg):
+    def send_message(self, target, msg):  # TODO: send to all client
         """
             send message to target client
         """

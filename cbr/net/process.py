@@ -79,7 +79,7 @@ class Process:
 
     async def msg_mc_server(self, msg, client_except=''):
         for i in self.server.clients.keys():
-            if client_except != i and self.server.clients[i].online and self.server.clients[i].type == 'mc':
+            if client_except != i and self.server.clients[i].online and (self.server.clients[i].type == 'mc' or client_except == "CBR"):
                 stream = self.server.clients[i].stream
                 await self.server.send_msg(stream, str(msg), i)
 

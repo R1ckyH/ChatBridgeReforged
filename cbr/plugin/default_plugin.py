@@ -158,6 +158,7 @@ async def msg_process(self: ServerProcess, msg: str, nursery: trio.Nursery, serv
     elif command:
         if msg.startswith('say'):
             msg = msg.replace('say ', '')
+            self.logger.debug("on_message active")
             nursery.start_soon(self.message_process, "CBR", '', msg, "CBR")
         elif msg == 'test':
             for thread in threading.enumerate():
