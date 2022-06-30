@@ -39,7 +39,7 @@ class AESCryptor:
 
     def decrypt(self, text):
         if self.__no_encrypt:
-            return text
+            return text.decode("utf-8")
         text = zlib.decompress(a2b_base64(text))
         try:
             result = unpad(self.get_cryptor().decrypt(text), 16)

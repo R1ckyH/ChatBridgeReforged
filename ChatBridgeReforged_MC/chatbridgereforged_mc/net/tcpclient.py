@@ -24,7 +24,6 @@ class Network(AESCryptor):
         length = struct.unpack('I', data)[0]
         msg = socket.recv(length)
         try:
-            msg = str(msg, encoding='utf-8')
             msg = self.decrypt(msg)
         except Exception:
             self.logger.bug_log(error=True)

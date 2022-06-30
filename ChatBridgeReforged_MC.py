@@ -298,7 +298,7 @@ class AESCryptor:
 
     def decrypt(self, text):
         if self.__no_encrypt:
-            return text
+            return text.decode("utf-8")
         text = zlib.decompress(a2b_base64(text))
         try:
             result = unpad(self.get_cryptor().decrypt(text), 16)
@@ -498,7 +498,6 @@ class Network(AESCryptor):
         length = struct.unpack('I', data)[0]
         msg = socket.recv(length)
         try:
-            msg = str(msg, encoding='utf-8')
             msg = self.decrypt(msg)
         except Exception:
             self.logger.bug_log(error=True)
