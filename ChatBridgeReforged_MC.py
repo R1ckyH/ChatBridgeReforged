@@ -405,6 +405,8 @@ class ClientProcess:
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg['action'] == 'message':
+                if self.client.server is not None and not self.client.server.is_server_running():
+                    return
                 if msg['message'] is None:
                     self.logger.info(str(msg['message']))
                     return
