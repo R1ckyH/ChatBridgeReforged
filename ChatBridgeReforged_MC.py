@@ -44,7 +44,7 @@ wait_time = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
 
 PLUGIN_METADATA = {
     'id': 'chatbridgereforged_mc',
-    'version': '0.2.2-dev027',
+    'version': '0.2.3-dev028',
     'name': 'ChatBridgeReforged_MC',
     'description': 'Reforged of ChatBridge, Client for normal mc server.',
     'author': 'ricky',

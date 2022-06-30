@@ -6,7 +6,7 @@ from chatbridgereforged_mc.utils import *
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
-VERSION = '0.2.2-dev027'
+VERSION = '0.2.3-dev028'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 

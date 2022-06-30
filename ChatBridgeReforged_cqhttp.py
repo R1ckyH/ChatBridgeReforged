@@ -47,7 +47,7 @@ end = False
 
 METADATA = {
     'id': 'cqhttp',
-    'version': '0.2.2-dev027',
+    'version': '0.2.3-dev028',
     'name': 'cqhttp',
     'description': 'Reforged of ChatBridge, Client for cqhttp.',
     'author': 'ricky',
