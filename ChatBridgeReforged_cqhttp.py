@@ -154,7 +154,7 @@ class CBRLogger:
         self.out_log(msg, debug=True)
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
-        msg = re.sub("§.", "", msg)
+        msg = re.sub("§.", "", str(msg))
         heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
             msg = heading + '[CHAT]: ' + msg
