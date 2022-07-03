@@ -87,8 +87,10 @@ class ClientProcess:
             if info is None or not info.is_player or server.get_permission_level(info.player) > 2:
                 self.logger.force_debug(info, server)
         elif message == 'test':
+            self.logger.info("Threads:")
             for thread in threading.enumerate():
-                print(thread.name)
+                self.logger.info(f"- {thread.name}")
+            self.logger.info(f"Restart Guardian: {client.restart_guardian.get_time_left()}s left")
         elif self.client.connected:
             self.client.send_msg(self.client.socket, msg_json_formatter(self.client.name, '', message))
         else:

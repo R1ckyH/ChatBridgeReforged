@@ -16,12 +16,14 @@ class GuardianBase:
         self.reset = False
         self.end = False
         self.name = name
+        self.current = 0
 
     def start(self):
         threading.Thread(target=self.run, name=f"Restart_Guardian_{self.name}", daemon=True).start()
         self.logger.debug(f"Thread Restart_Guardian_{self.name} started")
 
     def run(self):
+        self.end = False
         self.reset = False
         while not self.end:
             self.wait_restart()
@@ -32,13 +34,15 @@ class GuardianBase:
 
     def restart(self):
         self.reset = True
+        if self.end:
+            self.start()
 
     def wait_restart(self):
         pass
 
     def stopwatch(self, sec):
-        for i in range(sec):
-            time.sleep(i)
+        for self.current in range(sec):
+            time.sleep(1)
             if self.reset:
                 return False
         return True
@@ -65,18 +69,23 @@ class RestartGuardian(GuardianBase):
     def __init__(self, logger, client_class: 'CBRTCPClient'):
         super().__init__(logger, "CBR_client")
         self.client = client_class
+        self.wait_time = 0
 
     def _client_start(self):
         self.logger.debug(f"Try start")
         self.client.try_start(auto_connect=True)
 
+    def get_time_left(self):
+        return self.wait_time - self.current
+
     def wait_restart(self):
         for i in WAIT_TIME:
+            self.wait_time = i
             finish = self.stopwatch(i)
             if finish and not self.reset:
                 self._client_start()
             else:
-                self.logger.debug(f"Auto_restart reset after 5 sec")
+                self.logger.debug(f"Auto_restart reset, restart after 5 sec")
                 time.sleep(5)
                 return
         while not self.end:
@@ -84,6 +93,6 @@ class RestartGuardian(GuardianBase):
             if finish and not self.reset:
                 self._client_start()
             else:
-                self.logger.debug(f"Auto_restart reset after 5 sec")
+                self.logger.debug(f"Auto_restart reset, restart after 5 sec")
                 time.sleep(5)
                 return

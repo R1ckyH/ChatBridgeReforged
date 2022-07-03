@@ -81,9 +81,7 @@ class CBRTCPClient(Network):
         if not self.connected and not self.connecting:
             self.connecting = True
             threading.Thread(target=self.start, name='CBR', args=(info,), daemon=True).start()
-        else:
-            if auto_connect:
-                return
+        elif not auto_connect:
             if info is not None:
                 self.logger.print_msg("Already Connected to server", 2, info, server=self.server, error=True)
             else:
@@ -111,6 +109,7 @@ class CBRTCPClient(Network):
     def try_stop(self, info=None):
         if self.connected:
             self.close_connection()
+            self.restart_guardian.stop()
             self.logger.print_msg("Closed connection", 2, info, server=self.server)
         else:
             self.logger.print_msg("Connection already closed", 2, info, server=self.server)
@@ -118,7 +117,6 @@ class CBRTCPClient(Network):
             self.connecting = False
 
     def close_connection(self, target=''):
-        self.restart_guardian.stop()
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True

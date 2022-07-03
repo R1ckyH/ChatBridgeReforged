@@ -728,8 +728,10 @@ def input_process(message):
     elif message == 'forcedebug':
         local_logger.force_debug()
     elif message == 'test':
+        local_logger.info("Threads:")
         for thread in threading.enumerate():
-            print(thread.name)
+            local_logger.info(f"- {thread.name}")
+        local_logger.info(f"Restart Guardian: {restart_guardian.get_time_left()}s left")
     elif message.startswith('say'):
         msg = message.replace('say ', '')
         args = message.split(' ')
@@ -751,17 +753,19 @@ def input_process(message):
 
 
 class GuardianBase:
-    def __init__(self, logger: HeadingLogger, name=''):
+    def __init__(self, logger: 'CBRLogger', name=''):
         self.logger = logger
         self.reset = False
         self.end = False
         self.name = name
+        self.current = 0
 
     def start(self):
         threading.Thread(target=self.run, name=f"Restart_Guardian_{self.name}", daemon=True).start()
         self.logger.debug(f"Thread Restart_Guardian_{self.name} started")
 
     def run(self):
+        self.end = False
         self.reset = False
         while not self.end:
             self.wait_restart()
@@ -772,13 +776,15 @@ class GuardianBase:
 
     def restart(self):
         self.reset = True
+        if self.end:
+            self.start()
 
     def wait_restart(self):
         pass
 
     def stopwatch(self, sec):
-        for i in range(sec):
-            time.sleep(i)
+        for self.current in range(sec):
+            time.sleep(1)
             if self.reset:
                 return False
         return True
@@ -835,20 +841,24 @@ class RestartGuardian(GuardianBase):
     def __init__(self, logger, targets):
         super().__init__(logger, "CBR_client")
         self.targets: List['CBRTCPClient'] = targets
+        self.wait_time = 0
 
     def _client_start(self):
         for i in self.targets:
             self.logger.debug(f"Try start")
             i.try_start(auto_connect=True)
 
+    def get_time_left(self):
+        return self.wait_time - self.current
+
     def wait_restart(self):
         for i in wait_time:
+            self.wait_time = i
             finish = self.stopwatch(i)
             if finish and not self.reset:
-                # self.logger.error(f"Connection failed, reconnect after {i} second")
                 self._client_start()
             else:
-                self.logger.debug(f"Auto_restart reset after 5 sec")
+                self.logger.debug(f"Auto_restart reset, restart after 5 sec")
                 time.sleep(5)
                 return
         while not self.end:
@@ -856,7 +866,7 @@ class RestartGuardian(GuardianBase):
             if finish and not self.reset:
                 self._client_start()
             else:
-                self.logger.debug(f"Auto_restart reset after 5 sec")
+                self.logger.debug(f"Auto_restart reset, restart after 5 sec")
                 time.sleep(5)
                 return
 
