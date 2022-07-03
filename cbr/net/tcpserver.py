@@ -3,6 +3,7 @@ import trio
 
 from functools import partial
 
+from cbr.lib.client import Client
 from cbr.lib.config import Config
 from cbr.lib.logger import CBRLogger
 from cbr.net.network import Network
@@ -13,22 +14,6 @@ from cbr.plugin.rtext import *
 
 def rtext_cmd(txt, msg, cmd):
     return RText(txt).h(msg).c(RAction.suggest_command, cmd)
-
-
-class Clients:
-    def __init__(self, name, password):
-        self.name = name
-        self.password = password
-        self.online = False
-        self.type = False
-        self.stream = None
-        self.send_lock = trio.Lock()
-        self.ping = None
-        self.ping_lock = trio.CancelScope()
-        self.cmd_lock = trio.CancelScope()
-        self.cmd_result = None
-        self.process = None
-        self.lib_version = None
 
 
 class CBRTCPServer(Network):
@@ -78,7 +63,7 @@ class CBRTCPServer(Network):
         client_config = self.config.clients
         client_dict = {}
         for i in client_config:
-            client_dict.update({i['name']: Clients(i['name'], i['password'])})
+            client_dict.update({i['name']: Client(i['name'], i['password'])})
         return client_dict
 
     async def close_all_connection(self):

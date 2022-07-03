@@ -929,9 +929,9 @@ def check_hack(server: 'CBRInterface', config):
     if server is not None:
         hack_server = server._server
         if config['name'] not in hack_server.clients.keys():
-            from cbr.net.tcpserver import Clients
+            from cbr.lib.client import Client
             hack_server.config.clients.append({"name": config['name'], "password": config['password']})
-            hack_server.clients.update({config['name']: Clients(config['name'], config['password'])})
+            hack_server.clients.update({config['name']: Client(config['name'], config['password'])})
 
 
 DEFAULT_MSG_CONFIG = {
