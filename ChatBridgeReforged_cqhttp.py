@@ -358,6 +358,13 @@ class CQClient(websocket.WebSocketApp):
         else:
             self.run()
 
+    def stop(self):
+        if self.restart_guardian is not None:
+            self.restart_guardian.stop()
+        self.keep_running = False
+        time.sleep(0.1)
+        self.thread_event.set()
+
     @staticmethod
     def on_message(self, message):
         data = json.loads(message)
@@ -639,7 +646,8 @@ class CBRTCPClient(Network):
             self.connecting = False
 
     def close_connection(self, target=''):
-        self.ping_guardian.stop()
+        if self.ping_guardian is not None:
+            self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
             self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
@@ -814,7 +822,7 @@ class CQGuardian(GuardianBase):
 
 class PingGuardian(GuardianBase):
     def __init__(self, client, logger):
-        super().__init__(logger, "ping")
+        super().__init__(logger, "ping: " + client.name)
         self.client = client
 
     def wait_restart(self):
@@ -867,19 +875,15 @@ def reload():
     local_logger.print_msg("Reload ChatBridgeReforged Client now", 2)
     for i in clients.values():
         i.close_connection()
-    init_clients(local_logger)
-    time.sleep(0.1)
-    CQ_bot.keep_running = False
+    config = init_clients(local_logger, CQ_bot.server)
     local_logger.print_msg("Reloaded Config", 2)
+    CQ_bot.stop()
     for i in clients.values():
         i.try_start()
-    time.sleep(0.1)
     if auto_restart:
         restart_guardian.reset = False
         restart_guardian.targets = list(clients.values())
-    server = CQ_bot.server
-    config = CQ_bot.config
-    CQ_bot = CQClient(config, local_logger, clients, server)
+    CQ_bot = CQClient(config, local_logger, clients, CQ_bot.server)
     threading.Thread(target=CQ_bot.start, name="CQHTTP", daemon=True).start()
     for i in clients.values():
         local_logger.print_msg(f"Status: '{i.name}' Online = {i.connected}", 2)
@@ -964,6 +968,8 @@ def check_start(msg):
 
 def custom_check_send(target, msg, client, player, server: 'CBRInterface'):
     cache_disable_duplicate_send = False
+    if client == "CBR":
+        return False
     if target == 'full' and full_msg_group_client != []:
         for i in full_msg_group_client:
             if server.is_client_online(i):
@@ -1005,13 +1011,14 @@ def on_message(server: 'CBRInterface', info: 'MessageInfo'):
 
 
 def on_command(server: 'CBRInterface', info: 'MessageInfo'):
-    if info.content.lower().startswith('##qq') or info.content.lower().startswith('qq '):
+    if info.content.startswith("##CQ"):
+        info.cancel_send_message()
+        input_process(info.content.replace("##CQ ", "").replace("##CQ", ""))
+    elif info.content.lower().startswith('##qq') or info.content.lower().startswith('qq '):
         info.cancel_send_message()
         msg = replace_message(info.content)
         if not custom_check_send('less', msg, info.source_client, info.sender, server):
             custom_check_send('full', msg, info.source_client, info.sender, server)
-    elif info.content.startswith("##CQ"):
-        input_process(info.content.replace("##CQ ", ""))
 
 
 def on_load(server: 'CBRInterface'):
@@ -1035,12 +1042,12 @@ def on_load(server: 'CBRInterface'):
         data = DEFAULT_MSG_CONFIG
     full_msg_group_client = data['full_message_group_client']
     less_msg_group_client = data['less_message_group_client']
-    main(server)
+    threading.Thread(target=main, args=(server,), name="CBR_MAIN", daemon=True).start()
 
 
 def on_unload(server):
     input_process("stop")
-    CQ_bot.keep_running = False
+    CQ_bot.stop()
     if auto_restart:
         restart_guardian.stop()
         CQ_bot.restart_guardian.stop()
