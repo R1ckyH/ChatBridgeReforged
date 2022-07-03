@@ -206,10 +206,9 @@ class HeadingLogger:
         if server is None:
             self.__add_msg = ""
         else:
-            self.__add_msg = f"[plugin]"
+            self.__add_msg = f"[plugin] "
         if name != '':
-            self.__add_msg += f"[{self.name}]"
-        self.__add_msg += ' '
+            self.__add_msg += f"[{self.name}] "
 
     def info(self, msg):
         self.logger.info(self.__add_msg + str(msg))
@@ -251,9 +250,6 @@ class Config:
         self.ws_access_token = DEFAULT_CONFIG['ws_access_token']
         self.ws_url = f"ws://{self.ws_address}:{self.ws_port}/?access_token={self.ws_access_token}"
         self.react_groups = []
-        # self.react_group = ''
-        # self.name = DEFAULT_CONFIG['name']
-        # self.password = DEFAULT_CONFIG['password']
 
     def check_log_file(self):
         if not os.path.exists(LOG_PATH):
@@ -304,9 +300,6 @@ class Config:
         self.ws_port = config_dict['ws_port']
         self.ws_access_token = config_dict['ws_access_token']
         self.ws_url = f"ws://{self.ws_address}:{self.ws_port}/?access_token={self.ws_access_token}"
-        # self.react_group = config_dict['react_group']
-        # self.name = config_dict['name']
-        # self.password = config_dict['password']
 
     def init_all_config(self):
         self.init_config()
@@ -732,18 +725,16 @@ def input_process(message):
         for thread in threading.enumerate():
             local_logger.info(f"- {thread.name}")
         local_logger.info(f"Restart Guardian: {restart_guardian.get_time_left()}s left")
-    elif message.startswith('say'):
-        msg = message.replace('say ', '')
-        args = message.split(' ')
-        print(args[0])
+    elif message.startswith('say') and len(args) > 1:
+        msg = message.replace('say ' + args[1] + " ", '')
         for i in clients.values():
             if i.name == args[1]:
                 if i.connected:
                     i.send_msg(i.client.socket, msg_json_formatter(i.name, '', msg.replace(i.name + ' ', '')))
+                    i.logger.info(msg.replace(args[0] + " " + args[1] + " ", ""))
                 else:
                     local_logger.info("Not connected")
                 return
-        local_logger.info("Client not found")
     elif message == "unload":
         on_unload(None)
     # elif self.client.connected:
@@ -879,7 +870,7 @@ def reload():
     init_clients(local_logger)
     time.sleep(0.1)
     CQ_bot.keep_running = False
-    local_logger.print_msg("Reload Config", 2)
+    local_logger.print_msg("Reloaded Config", 2)
     for i in clients.values():
         i.try_start()
     time.sleep(0.1)
