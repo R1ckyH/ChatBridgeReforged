@@ -31,7 +31,7 @@ class ClientProcess:
             return -2
         self.logger.debug(f'Ping to server')
         start_time = time.time()
-        self.client.send_msg(self.client.socket, '{"action": "keepAlive", "type": "ping"}', 'server')
+        self.client.send_ping(self.client.socket, target='server')
         self.ping_result()
         self.logger.debug(f'get ping result from server')
         if self.end == -1:
@@ -105,7 +105,7 @@ class ClientProcess:
                     self.logger.error("Login in fail")
             elif msg["action"] == 'keepAlive':
                 if msg['type'] == 'ping':
-                    self.client.send_msg(socket, '{"action": "keepAlive", "type": "pong"}')
+                    self.client.send_ping(socket, True, "server")
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg["action"] == 'message':

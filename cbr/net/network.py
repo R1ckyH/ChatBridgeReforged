@@ -67,8 +67,6 @@ class Network(NetworkBase):
         await self.send_msg(stream, msg, target)
 
     async def send_stop(self, stream: "trio.SocketStream", target=''):
-        message = {
-            "action": "stop"
-        }
+        message = {"action": "stop"}
         msg = json.dumps(message)
         await self.send_msg(stream, msg, target)

@@ -22,3 +22,30 @@ def msg_json_formatter(client_name, player, msg):
         "message": msg
     }
     return json.dumps(message)
+
+
+def ping_formatter(pong=False):
+    message = {
+        "action": "keepAlive",
+    }
+    if pong:
+        message.update({"type": "pong"})
+    else:
+        message.update({"type": "ping"})
+    return json.dumps(message)
+
+
+def login_formatter(name, password):
+    message = {
+        "action": "login",
+        "name": name,
+        "password": password,
+        "lib_version": LIB_VERSION,
+        "type": CLIENT_TYPE
+    }
+    return json.dumps(message)
+
+
+def stop_formatter():
+    message = {"action": "stop"}
+    return json.dumps(message)

@@ -14,9 +14,10 @@ def message_formatter(client, player, msg, receiver=''):
         "action": "message",
         "client": client,
         "player": player,
-        "message": msg,
-        "receiver": receiver
+        "message": msg
        }
+    if receiver != "":
+        message.update({"receiver": receiver})
     return json.dumps(message)
 
 

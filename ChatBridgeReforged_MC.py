@@ -96,6 +96,33 @@ def msg_json_formatter(client_name, player, msg):
     return json.dumps(message)
 
 
+def ping_formatter(pong=False):
+    message = {
+        "action": "keepAlive",
+    }
+    if pong:
+        message.update({"type": "pong"})
+    else:
+        message.update({"type": "ping"})
+    return json.dumps(message)
+
+
+def login_formatter(name, password):
+    message = {
+        "action": "login",
+        "name": name,
+        "password": password,
+        "lib_version": LIB_VERSION,
+        "type": CLIENT_TYPE
+    }
+    return json.dumps(message)
+
+
+def stop_formatter():
+    message = {"action": "stop"}
+    return json.dumps(message)
+
+
 help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
 ''' + help_formatter(PREFIX, 'help', 'show help message§r', 'show help message') + '''
 ''' + help_formatter(PREFIX, 'start', 'start ChatBridgeReforged client§r', 'start') + '''
@@ -330,7 +357,7 @@ class ClientProcess:
             return -2
         self.logger.debug(f'Ping to server')
         start_time = time.time()
-        self.client.send_msg(self.client.socket, '{"action": "keepAlive", "type": "ping"}', 'server')
+        self.client.send_ping(self.client.socket, target='server')
         self.ping_result()
         self.logger.debug(f'get ping result from server')
         if self.end == -1:
@@ -404,7 +431,7 @@ class ClientProcess:
                     self.logger.error("Login in fail")
             elif msg["action"] == 'keepAlive':
                 if msg['type'] == 'ping':
-                    self.client.send_msg(socket, '{"action": "keepAlive", "type": "pong"}')
+                    self.client.send_ping(socket, True, "server")
                 elif msg['type'] == 'pong':
                     self.end = time.time()
             elif msg["action"] == 'message':
@@ -496,7 +523,7 @@ class ClientProcess:
             self.client.close_connection("Server")
 
 
-class Network(AESCryptor):
+class NetworkBase(AESCryptor):
     def __init__(self, key, new_client: 'CBRTCPClient'):
         super().__init__(key, logger=new_client.logger)
         self.client = new_client
@@ -531,6 +558,23 @@ class Network(AESCryptor):
             self.logger.info("Connection closed from server")
             self.client.connected = False
             self.client.close_connection()
+
+
+class Network(NetworkBase):
+    def __init__(self, key, new_client):
+        super().__init__(key, new_client)
+
+    def send_ping(self, socket, pong=False, target=""):
+        msg = ping_formatter(pong)
+        self.send_msg(socket, msg, target)
+
+    def send_login(self, socket, name, password, target=""):
+        msg = login_formatter(name, password)
+        self.send_msg(socket, msg, target)
+
+    def send_stop(self, socket, target=""):
+        msg = stop_formatter()
+        self.send_msg(socket, msg, target)
 
 
 class CBRTCPClient(Network):
@@ -604,7 +648,7 @@ class CBRTCPClient(Network):
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
-            self.send_msg(self.socket, json.dumps({"action": 'stop'}), target)
+            self.send_stop(self.socket, target)
             self.socket.close()
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")
@@ -623,10 +667,6 @@ class CBRTCPClient(Network):
         time.sleep(0.1)
         self.logger.print_msg(f"CBR status: Online = {self.connected}", 2, info, server=self.server)
 
-    def login(self, name, password):
-        msg = {"action": "login", "name": name, "password": password, "lib_version": LIB_VERSION, "type": CLIENT_TYPE}
-        self.send_msg(self.socket, json.dumps(msg))
-
     def client_process(self):
         try:
             msg = self.receive_msg(self.socket, self.config.host_name)
@@ -638,7 +678,7 @@ class CBRTCPClient(Network):
         self.process.process_msg(msg, self.socket)
 
     def handle_echo(self):
-        self.login(self.name, self.password)
+        self.send_login(self.socket, self.name, self.password, "server")
         self.ping_guardian = PingGuardian(self, self.logger)
         self.ping_guardian.start()
         while self.socket is not None and self.connected:
@@ -730,9 +770,8 @@ class PingGuardian(GuardianBase):
             time.sleep(1)
             if self.end:
                 return
-        ping_msg = json.dumps({"action": "keepAlive", "type": "ping"})
         if self.client.connected:
-            self.client.send_msg(self.client.socket, ping_msg)
+            self.client.send_ping(self.client.socket, target="server")
 
 
 class RestartGuardian(GuardianBase):

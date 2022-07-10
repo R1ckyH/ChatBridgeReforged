@@ -82,7 +82,7 @@ class CBRTCPClient(Network):
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
-            self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
+            self.send_stop(self.socket, target)
             self.socket.close()
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")
@@ -101,10 +101,6 @@ class CBRTCPClient(Network):
         time.sleep(0.1)
         self.logger.print_msg(f"CBR status: Online = {self.connected}", 2, info, server=self.server)
 
-    def login(self, name, password):
-        msg = {"action": "login", "name": name, "password": password, "lib_version": LIB_VERSION, "type": CLIENT_TYPE}
-        self.send_msg(self.socket, json.dumps(msg))
-
     def client_process(self):
         try:
             msg = self.receive_msg(self.socket, self.config.host_name)
@@ -116,7 +112,7 @@ class CBRTCPClient(Network):
         self.process.process_msg(msg, self.socket)
 
     def handle_echo(self):
-        self.login(self.name, self.password)
+        self.send_login(self.socket, self.name, self.password, "server")
         self.ping_guardian = PingGuardian(self, self.logger, self.config)
         self.ping_guardian.start()
         while self.socket is not None and self.connected:
