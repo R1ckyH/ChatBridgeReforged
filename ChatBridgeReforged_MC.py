@@ -389,7 +389,7 @@ class ClientProcess:
             self.logger.info("Threads:")
             for thread in threading.enumerate():
                 self.logger.info(f"- {thread.name}")
-            self.logger.info(f"Restart Guardian: {client.restart_guardian.get_time_left()}s left")
+            self.logger.info(f"Restart Guardian: {self.client.restart_guardian.get_time_left()}s left")
         elif self.client.connected:
             self.client.send_msg(self.client.socket, msg_json_formatter(self.client.name, '', message))
         else:
