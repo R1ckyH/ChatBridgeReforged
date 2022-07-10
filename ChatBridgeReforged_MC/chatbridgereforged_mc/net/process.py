@@ -114,30 +114,36 @@ class ClientProcess:
                 if msg['message'] is None:
                     self.logger.info(str(msg['message']))
                     return
+                add_text = ""
+                if msg["client"] != "CBR":
+                    add_text = f"§7[§{self.client.config.client_color}{msg['client']}§7]§r "
+                if msg["player"] != "":
+                    add_text += f"<{msg['player']}>§r "
+                message = msg['message'].replace("\\n", f"\\n{add_text}")
+                receiver = ""
+                if "receiver" in msg.keys():
+                    receiver = msg['receiver']
                 try:
-                    add_text = ""
-                    if msg["client"] != "CBR":
-                        add_text = f"§7[§{self.client.config.client_color}{msg['client']}§7]§r "
-                    if msg["player"] != "":
-                        add_text += f"<{msg['player']}>§r "
-                    message = msg['message'].replace("\\n", f"\\n{add_text}")
                     data = json.loads(message)
                     if type(data) == list:
                         data[1]["text"] = add_text + data[1]["text"]
                     elif type(data) == dict:
                         data["text"] = add_text + data[1]["text"]
                     else:
-                        raise Exception
-                    message = json.dumps(data)
-                    if msg["receiver"] != "":
-                        self.client.server.execute(f"execute run tellraw {msg['receiver']} {message}")
-                    else:
-                        self.client.server.execute(f"execute run tellraw @a {message}")
-                except Exception:
+                        data = str(data)
+                except json.decoder.JSONDecodeError:
+                    data = ""
+                if type(data) == str:
                     for i in msg['message'].splitlines():
                         message = self.message_formatter(msg['client'], msg['player'], i)
-                        self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server,
+                        self.logger.print_msg(message, 0, player=receiver, server=self.client.server,
                                               not_spam=True, chat=True)
+                    return
+                message = json.dumps(data)
+                if receiver != "":
+                    self.client.server.execute(f"execute run tellraw {receiver} {message}")
+                else:
+                    self.client.server.execute(f"execute run tellraw @a {message}")
             elif msg["action"] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
