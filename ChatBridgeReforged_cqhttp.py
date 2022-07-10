@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 PREFIX = '!!CBR'
 PREFIX2 = '!!cbr'
+PREFIX3 = '##CQ'
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "cqhttp"
 clients: Dict[str, 'CBRTCPClient']
@@ -115,14 +116,14 @@ def qq_msg_formatter(text, group_id):
 
 
 help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
-''' + help_formatter(PREFIX, 'help', 'show help message§r', 'show help message') + '''
-''' + help_formatter(PREFIX, 'start', 'start ChatBridgeReforged client§r', 'start') + '''
-''' + help_formatter(PREFIX, 'stop', 'stop ChatBridgeReforged client§r', 'stop') + '''
-''' + help_formatter(PREFIX, 'status', 'show status of ChatBridgeReforged client§r', 'show status') + '''
-''' + help_formatter(PREFIX, 'reload', 'reload ChatBridgeReforged client§r', 'reload') + '''
-''' + help_formatter(PREFIX, 'restart', 'restart ChatBridgeReforged client§r', 'restart') + '''
-''' + help_formatter(PREFIX, 'ping', 'ping ChatBridgeReforged server§r', 'ping') + '''
-''' + help_formatter(PREFIX, 'say [client name] <msg>', 'ping ChatBridgeReforged server§r', 'ping') + '''
+''' + help_formatter(PREFIX3, 'help', 'show help message§r', 'show help message') + '''
+''' + help_formatter(PREFIX3, 'start', 'start ChatBridgeReforged client§r', 'start') + '''
+''' + help_formatter(PREFIX3, 'stop', 'stop ChatBridgeReforged client§r', 'stop') + '''
+''' + help_formatter(PREFIX3, 'status', 'show status of ChatBridgeReforged client§r', 'show status') + '''
+''' + help_formatter(PREFIX3, 'reload', 'reload ChatBridgeReforged client§r', 'reload') + '''
+''' + help_formatter(PREFIX3, 'restart', 'restart ChatBridgeReforged client§r', 'restart') + '''
+''' + help_formatter(PREFIX3, 'ping', 'ping ChatBridgeReforged server§r', 'ping') + '''
+''' + help_formatter(PREFIX3, 'say [client name] <msg>', 'ping ChatBridgeReforged server§r', 'ping') + '''
 §b-----------------------------------------------§r'''
 
 
@@ -522,20 +523,20 @@ class ClientProcess:
             self.logger.print_msg(f'{self.client.name}: Alive - time = {ping_ms}ms', 2)
 
     def process_msg(self, msg, socket: soc.socket):
-        if 'action' in msg.keys():
-            if msg['action'] == 'result':
+        if "action" in msg.keys():
+            if msg["action"] == 'result':
                 if msg['result'] == 'login success':
                     if self.server is not None:
                         return
                     self.logger.info("Login Success")
                 else:
                     self.logger.error("Login in fail")
-            elif msg['action'] == 'keepAlive':
+            elif msg["action"] == 'keepAlive':
                 if msg['type'] == 'ping':
                     self.client.send_msg(socket, '{"action": "keepAlive", "type": "pong"}')
                 elif msg['type'] == 'pong':
                     self.end = time.time()
-            elif msg['action'] == 'message':
+            elif msg["action"] == 'message':
                 if msg['message'] is None:
                     self.logger.info(str(msg['message']))
                     return
@@ -546,7 +547,7 @@ class ClientProcess:
                 msg['message'] = re.sub("§.", "", msg['message'])
                 message = message_formatter(msg['client'], msg['player'], msg['message'])
                 CQ_bot.send_text(message, group_id=self.client.react_group)
-            elif msg['action'] == 'stop':
+            elif msg["action"] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
         else:
@@ -650,7 +651,7 @@ class CBRTCPClient(Network):
             self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
-            self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
+            self.send_msg(self.socket, json.dumps({"action": 'stop'}), target)
             self.socket.close()
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")

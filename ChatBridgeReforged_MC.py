@@ -396,18 +396,18 @@ class ClientProcess:
             self.logger.info("Not Connected")
 
     def process_msg(self, msg, socket: soc.socket):
-        if 'action' in msg.keys():
-            if msg['action'] == 'result':
+        if "action" in msg.keys():
+            if msg["action"] == 'result':
                 if msg['result'] == 'login success':
                     self.logger.info("Login Success")
                 else:
                     self.logger.error("Login in fail")
-            elif msg['action'] == 'keepAlive':
+            elif msg["action"] == 'keepAlive':
                 if msg['type'] == 'ping':
                     self.client.send_msg(socket, '{"action": "keepAlive", "type": "pong"}')
                 elif msg['type'] == 'pong':
                     self.end = time.time()
-            elif msg['action'] == 'message':
+            elif msg["action"] == 'message':
                 if self.client.server is not None and not self.client.server.is_server_running():
                     return
                 if msg['message'] is None:
@@ -437,10 +437,10 @@ class ClientProcess:
                         message = message_formatter(msg['client'], msg['player'], i)
                         self.logger.print_msg(message, 0, player=msg['receiver'], server=self.client.server,
                                               not_spam=True, chat=True)
-            elif msg['action'] == 'stop':
+            elif msg["action"] == 'stop':
                 self.client.close_connection()
                 self.logger.info(f'Connection closed from server')
-            elif msg['action'] == 'command':
+            elif msg["action"] == 'command':
                 command = msg['command']
                 msg['result']['responded'] = True
                 if self.client.server is not None:
@@ -459,7 +459,7 @@ class ClientProcess:
                 else:
                     msg['result']['type'] = 2
                 self.client.send_msg(socket, json.dumps(msg))
-            elif msg['action'] == 'api':
+            elif msg["action"] == 'api':
                 plugin_id = msg['plugin']
                 function = msg['function']
                 keys: list = msg['keys']
@@ -598,7 +598,7 @@ class CBRTCPClient(Network):
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
-            self.send_msg(self.socket, json.dumps({'action': 'stop'}), target)
+            self.send_msg(self.socket, json.dumps({"action": 'stop'}), target)
             self.socket.close()
             time.sleep(0.000001)  # for better logging priority
             self.logger.debug("Connection closed to server")
