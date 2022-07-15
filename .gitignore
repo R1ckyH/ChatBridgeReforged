@@ -1,6 +1,6 @@
-# @ChatBridgeReforged 2021
+# @ChatBridgeReforged 2022
 
-# Files
+# Directories
 .gitignore
 *.log
 *.zip
@@ -10,9 +10,10 @@
 .idea/
 config
 plugins
-release
+release*
 test*
+
+# Files
 config.yml
 rm_pycache.py
-zip_release.py
 tempCodeRunnerFile.py
