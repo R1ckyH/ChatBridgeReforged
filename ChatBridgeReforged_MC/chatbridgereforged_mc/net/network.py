@@ -45,6 +45,10 @@ class NetworkBase(AESCryptor):
             self.logger.info("Connection closed from server")
             self.client.connected = False
             self.client.close_connection()
+        except OSError:
+            self.logger.info("Connection to server lost")
+            self.client.connected = False
+            self.client.close_connection()
 
 
 class Network(NetworkBase):
