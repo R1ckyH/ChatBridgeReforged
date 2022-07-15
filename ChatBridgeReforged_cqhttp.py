@@ -333,6 +333,23 @@ class Config:
         self.init_config()
 
 
+class ClientConfig:
+    def __init__(self, config: Config, name, password, react_group):
+        self.name = name
+        self.password = password
+        self.react_group = react_group
+        self.logger = config.logger
+        self.host_name = config.host_name
+        self.host_port = config.host_port
+        self.aes_key = config.aes_key
+        self.clients = config.clients
+        self.ws_address = config.ws_address  # not same with host_name
+        self.ws_port = config.ws_port
+        self.ws_access_token = config.ws_access_token
+        self.ws_url = config.ws_url
+        self.react_groups = config.react_groups
+
+
 class Compressor:
     def __init__(self, logger: 'CBRLogger'):
         self.logger = logger
@@ -638,17 +655,17 @@ class Network(NetworkBase):
 
 
 class CBRTCPClient(Network):
-    def __init__(self, config: 'Config', logger: CBRLogger, client_config, server=None):
+    def __init__(self, config: 'Config', logger: CBRLogger, server=None):
         self.config = config
+        self.logger = HeadingLogger(logger, config.name, server)
         self.server: 'CBRInterface' = server
         self.socket = None
         self.connected = False
         self.cancelled = False
         self.connecting = False
-        self.name = client_config['name']
-        self.logger = HeadingLogger(logger, self.name, server)
-        self.password = client_config['password']
-        self.react_group = client_config['react_group']
+        self.name = config.name
+        self.password = config.password
+        self.react_group = config.react_group
         super().__init__(config.aes_key, self)
         self.process = ClientProcess(self, server)
         self.ping_guardian: PingGuardian
@@ -936,7 +953,8 @@ def init_clients(logger, server: 'CBRInterface' = None):
     clients = {}
     for i in config.clients:
         check_hack(server, i)
-        client = CBRTCPClient(config, logger, i, server)
+        client_config = ClientConfig(config, i["name"], i["password"], i["react_group"])
+        client = CBRTCPClient(client_config, logger, server)
         clients.update({client.react_group: client})
     return config
 

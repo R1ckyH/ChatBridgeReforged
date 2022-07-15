@@ -17,7 +17,7 @@ def rtext_cmd(txt, msg, cmd):
 
 
 class CBRTCPServer(Network):
-    def __init__(self, logger: CBRLogger, config: Config):
+    def __init__(self, logger: CBRLogger, config: 'Config'):
         self.logger = logger
         self.config = config
         self.lib_version = self.config.lib_version
