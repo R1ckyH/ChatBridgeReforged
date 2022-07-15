@@ -2,6 +2,8 @@ import json
 
 from mcdreforged.api.all import *
 
+from chatbridgereforged_mc.constants import LIB_VERSION, CLIENT_TYPE
+
 
 def rtext_cmd(txt, msg, cmd):
     return RText(txt).h(msg).c(RAction.run_command, cmd)

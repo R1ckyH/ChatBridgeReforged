@@ -1,11 +1,12 @@
 """
 config here
 """
-import zipfile
+import json
 import os
+import zipfile
 
 from chatbridgereforged_mc.lib.logger import CBRLogger
-from chatbridgereforged_mc.resources import *
+from chatbridgereforged_mc.constants import *
 
 
 class AdvancedConfig:

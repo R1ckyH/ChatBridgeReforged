@@ -4,7 +4,11 @@ import time
 
 from typing import TYPE_CHECKING
 
+from mcdreforged.api.all import *
+
+from chatbridgereforged_mc.constants import *
 from chatbridgereforged_mc.resources import *
+from chatbridgereforged_mc.utils import *
 
 if TYPE_CHECKING:
     from chatbridgereforged_mc.net.tcpclient import CBRTCPClient

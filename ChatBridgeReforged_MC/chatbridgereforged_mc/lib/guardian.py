@@ -3,7 +3,7 @@ import time
 
 from typing import TYPE_CHECKING
 
-from chatbridgereforged_mc.resources import *
+from chatbridgereforged_mc.constants import *
 if TYPE_CHECKING:
     from chatbridgereforged_mc.lib.logger import CBRLogger
     from chatbridgereforged_mc.net.tcpclient import CBRTCPClient

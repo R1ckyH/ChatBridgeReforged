@@ -1,5 +1,7 @@
 import time
 
+from mcdreforged.api.all import *
+
 from chatbridgereforged_mc.lib.config import Config
 from chatbridgereforged_mc.lib.guardian import RestartGuardian
 from chatbridgereforged_mc.lib.logger import CBRLogger

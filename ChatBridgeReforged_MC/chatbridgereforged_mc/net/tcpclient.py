@@ -1,3 +1,4 @@
+import json
 import socket as soc
 import threading
 import time
@@ -7,7 +8,7 @@ from chatbridgereforged_mc.lib.guardian import PingGuardian, RestartGuardian
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.net.network import Network
 from chatbridgereforged_mc.net.process import ClientProcess
-from chatbridgereforged_mc.resources import *
+from chatbridgereforged_mc.constants import *
 
 
 class CBRTCPClient(Network):
