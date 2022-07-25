@@ -4,7 +4,7 @@
 - python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
 - Please give a **star** if you like this repository
-- Preview version at [ChatBridgeReforged_preview](https://github.com/R1ckyH/ChatBridgeReforged/tree/test)
+- Preview version at [ChatBridgeReforged_preview](https://github.com/R1ckyH/ChatBridgeReforged_preview)
 
   ![image](./CBR.svg)
 
@@ -57,6 +57,7 @@ Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json`
 |----------|-----------|--------------------|
 | name     | `string`  | name of client     |
 | password | `string`  | password of client |
+| config   | data type | description        |
 
 ### log
 `Dict`
@@ -78,10 +79,10 @@ Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json`
 
 ## cqhttp
 
-[cqhttp document](./doc/cqhttp.md)
+[cqhttp document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/cqhttp.md)
 
 ## Plugin
 
-[Plugin document](./doc/plugin.md)
+[Plugin document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/plugin.md)
 
 Plugin Catalogue will launch soon
