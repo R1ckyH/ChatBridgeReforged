@@ -4,6 +4,7 @@
 - python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
 - Please give a **star** if you like this repository
+- Preview version at [ChatBridgeReforged_preview](https://github.com/R1ckyH/ChatBridgeReforged/tree/test)
 
   ![image](./CBR.svg)
 
