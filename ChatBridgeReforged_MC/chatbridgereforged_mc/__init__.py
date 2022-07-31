@@ -6,7 +6,8 @@ from chatbridgereforged_mc.lib.config import Config
 from chatbridgereforged_mc.lib.guardian import RestartGuardian
 from chatbridgereforged_mc.lib.logger import CBRLogger
 from chatbridgereforged_mc.net.tcpclient import CBRTCPClient
-from chatbridgereforged_mc.resources import *
+from chatbridgereforged_mc.constants import *
+from chatbridgereforged_mc.utils import *
 
 client: CBRTCPClient
 
