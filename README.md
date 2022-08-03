@@ -1,10 +1,11 @@
+# WARNING
+# **This is a preview repository, So anything in this repo may not appear at the main repo**
 # ChatBridgeReforged
 
 - only tested for python 3.7 and 3.8
 - python version should be 3.7+
 - `pip install -r requirements.txt` to install requirements!
 - Please give a **star** if you like this repository
-- Preview version at [ChatBridgeReforged_preview](https://github.com/R1ckyH/ChatBridgeReforged_preview)
 
   ![image](./CBR.svg)
 
@@ -22,20 +23,6 @@
 use `##help` to get plugin help command
 
 use `##CBR` to get help command
-
-#### CBR Server setup
-Put all ChatBridgeReforged server files in a directory like
-```
-ChatBridgeReforged
--cbr
--ChatBridgeReforged_Server.py
-```
-Start server with run `ChatBridgeReforged_Server.py`
-
-put `ChatBridgeReforged_MC.py` in MCDR's plugins file
-
-Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json` in MCDR's directory
-
 
 ## Config
 
@@ -77,12 +64,12 @@ Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json`
 | CBR    | `bool`    | debug mode switch |
 | plugin | `bool`    | debug mode switch |
 
-## cqhttp
+## Other Client
 
-[cqhttp document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/cqhttp.md)
+[Client document](./doc/client.md)
 
 ## Plugin
 
-[Plugin document](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/plugin.md)
+[Plugin document](./doc/plugin.md)
 
 Plugin Catalogue will launch soon
