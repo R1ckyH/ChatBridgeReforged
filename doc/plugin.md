@@ -139,7 +139,7 @@ The attributes of the info object are:
 
 ## Rtext
 
-Rtext document [here](https://github.com/R1ckyH/ChatBridgeReforged/tree/master/doc/rtext.md)
+Rtext document [here](./doc/rtext.md)
 
 
 ## Some tips for writing plugin
