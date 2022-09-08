@@ -4,11 +4,12 @@ import traceback
 
 from os import path, mkdir
 
-from cbr.lib.config import Config
+from cbr.lib.typeddicts import TypedDebugConfig
 
 LOG_FILE = "logs"
 LOG_PATH = LOG_FILE + "/latest.log"
 CHAT_LOG_PATH = LOG_FILE + "/chat.log"
+DEFAULT_DEBUG_CONFIG: TypedDebugConfig = {"all": False, "CBR": False, "plugin": False}
 
 logger_black_list = ["ping", "Result of", "- ", "Client ", "Ping client", "Send Command", "Unknown "]  # File handler
 logger_black_arg2 = ["joined", "left"]  # File handler
@@ -41,13 +42,13 @@ class StdoutFilter(logging.Filter):
 
 
 class CBRLogger(logging.getLoggerClass()):
-    def __init__(self, name, config: Config = Config()):
+    def __init__(self, name):
         if not path.exists(LOG_FILE):
             mkdir(LOG_FILE)
         super().__init__(name)
         self.file_handler = None
         self.stdout_handler = logging.StreamHandler(sys.stdout)
-        self.debug_config = config.debug
+        self.debug_config = DEFAULT_DEBUG_CONFIG
         self.stdout_handler.setFormatter(self.formatter("%H:%M:%S"))
         self.addHandler(self.stdout_handler)
         logging.addLevelName(21, "CHAT")

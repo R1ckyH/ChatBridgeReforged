@@ -6,14 +6,12 @@ import shutil
 
 from os import path
 from ruamel import yaml
-from typing import Any, TYPE_CHECKING, List, Mapping
+from typing import Any, List, Mapping
 # from ruamel.yaml.comments import CommentedMap
 
-from cbr.lib.zip import Compressor
+from cbr.lib.logger import CBRLogger
 from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
-
-if TYPE_CHECKING:
-    from cbr.lib.logger import CBRLogger
+from cbr.lib.zip import Compressor
 
 CHATBRIDGEREFORGED_VERSION = "0.2.7-dev032"
 LIB_VERSION = "v20210915"
@@ -62,7 +60,6 @@ class ConfigChecker:
                 data: TypedConfig = yaml.safe_load(config)
             try:
                 self.logger.debug_config = data["debug"]
-                self.logger.debug_all = self.logger.debug_config["all"]
                 logs_data = data["log"]
                 split_log = logs_data["split_log"]
                 compressor = Compressor(self.logger)
@@ -73,7 +70,7 @@ class ConfigChecker:
                     self.logger.setup(True)
             except KeyError:
                 self.logger.setup()
-                raise ValueError("Some config is missing in config.yml")
+                raise ValueError("Missing debug config in config.yml")
         self.logger.debug("Checking config ......", "CBR")
         self.__check_config_contents(data)
         return data
@@ -119,33 +116,19 @@ class ConfigChecker:
 
 
 class Config:
-    def __init__(self):
-        self.logger = None
-        self.config_checker = None
-        self.ip = "127.0.0.1"
-        self.port = 30001
-        self.aes_key = "ThisIsTheSecret"
-        self.debug = {"all": True, "CBR": False, "plugin": False}
+    def __init__(self, logger: CBRLogger):
+        self.logger = logger
         self.version = CHATBRIDGEREFORGED_VERSION
         self.lib_version = LIB_VERSION
-        self.raw_data = {}
-        self.clients = []
-
-    def __init_data(self):
+        self.config_checker = ConfigChecker(self.logger)
+        self.checked_data = self.config_checker.get_checked_data()
         try:
-            self.ip = self.raw_data["server_setting"]["host_name"]
-            self.port = self.raw_data["server_setting"]["port"]
-            self.aes_key = self.raw_data["server_setting"]["aes_key"]
-            self.debug = self.raw_data["debug"]
-            self.clients = self.raw_data["clients"]
-            self.logger.debug_all = self.raw_data["debug"]["all"]
+            self.ip = self.checked_data["server_setting"]["host_name"]
+            self.port = self.checked_data["server_setting"]["port"]
+            self.aes_key = self.checked_data["server_setting"]["aes_key"]
+            self.debug = self.checked_data["debug"]
+            self.clients = self.checked_data["clients"]
         except AttributeError:
             exit(0)
-
-    def init_config(self, logger: "CBRLogger"):
-        self.logger = logger
-        self.config_checker = ConfigChecker(self.logger)
-        self.raw_data = self.config_checker.get_checked_data()
-        self.__init_data()
         self.logger.info(f"CBR is now starting at pid {os.getpid()}")
         self.logger.info(f"version : {self.version}, lib version : {self.lib_version}")

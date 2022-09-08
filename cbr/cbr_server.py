@@ -6,10 +6,9 @@ from cbr.net.tcpserver import CBRTCPServer
 class CBRServer:
     def __init__(self):
         # TODO: permission system(happy lazy)
-        self.config = Config()
-        self.logger = CBRLogger("CBR", self.config)
+        self.logger = CBRLogger("CBR")
         try:
-            self.config.init_config(self.logger)
+            self.config = Config(self.logger)
             self.tcp_server = CBRTCPServer(self.logger, self.config)
         except ValueError:
             self.logger.bug()
