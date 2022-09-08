@@ -3,18 +3,17 @@ CBR config file stuffs
 """
 import os
 import shutil
-
-from os import path
-from ruamel import yaml
-from typing import Any, List, Mapping
-# from ruamel.yaml.comments import CommentedMap
+from typing import Any, List, Mapping, NoReturn
 
 from cbr.lib.logger import CBRLogger
 from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
-from cbr.lib.zip import Compressor
+from ruamel import yaml
 
-CHATBRIDGEREFORGED_VERSION = "0.2.5-dev030"
-LIB_VERSION = "v20210915"
+# from ruamel.yaml.comments import CommentedMap
+
+
+CHATBRIDGEREFORGED_VERSION = "0.3.0-dev001"
+LIB_VERSION = "v20220908"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE: List[TypedConfigStruct] = [
@@ -43,63 +42,39 @@ CONFIG_STRUCTURE: List[TypedConfigStruct] = [
 ]
 
 
-class ConfigChecker:
+class Config:
+    def __init__(self, data: TypedConfig):
+        self.version = CHATBRIDGEREFORGED_VERSION
+        self.lib_version = LIB_VERSION
+        self.ip = data['server_setting']['host_name']
+        self.port = data['server_setting']['port']
+        self.aes_key = data['server_setting']['aes_key']
+        self.debug = data['debug']
+        self.clients = data['clients']
+        self.raw_data = data
+
+
+class ConfigManager:
     def __init__(self, logger: CBRLogger):
         self.logger = logger
 
-    def check_all(self) -> TypedConfig:
-        if not path.exists('config'):
-            os.mkdir('config')
-        if not path.exists('plugins'):
-            os.mkdir('plugins')
-        if not path.exists(CONFIG_PATH):
-            self.logger.error("Config file is missing, default config generated")
-            self.__gen_config()
-        else:
-            with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
-                data: TypedConfig = yaml.safe_load(config)
-            try:
-                self.logger.debug_config = data['debug']
-                logs_data = data['log']
-                split_log = logs_data['split_log']
-                compressor = Compressor(self.logger)
-                compressor.zip_log('latest.log', logs_data['size_to_zip'])
-                self.logger.setup(split_log=split_log)
-                if split_log:
-                    compressor.zip_log('chat.log', logs_data['size_to_zip_chat'])
-                    self.logger.setup(True)
-            except KeyError:
-                self.logger.setup()
-                raise ValueError('Some config is missing in config.yml')
-        self.logger.debug("Checking config ......", "CBR")
-        self.__check_config_info(data)
-        return data
-
-    def __gen_config(self):
-        if not path.exists(DEFAULT_CONFIG_PATH):
-            raise FileNotFoundError('Default config not found, re-installing ChatBridgeReforged may fix the problem')
-            # self.logger.bug()
+    def __gen_config(self) -> NoReturn:
+        if not os.path.exists(DEFAULT_CONFIG_PATH):
+            self.logger.error('Default config not found, re-installing ChatBridgeReforged may fix the problem')
+            exit(1)
         else:
             shutil.copyfile(DEFAULT_CONFIG_PATH, CONFIG_PATH)
-            self.logger.info("Default config is used now")
-            self.logger.info("Please configure the config and restart again")
-            self.logger.info("Exit now")
-            exit(0)  # exit here
-
-    def __check_config_info(self, data: Mapping[str, Any]):
-        self.logger.debug('Checking config.yml', "CBR")
-        if self.__check_node(data, CONFIG_STRUCTURE):
-            self.logger.debug('Finish config check', "CBR")
-        else:
-            self.logger.setup()
-            raise ValueError('Some config is missing in config.yml')
+            self.logger.warning("Default config is used now")
+            self.logger.warning("Please configure the config and restart again")
+            self.logger.warning("Exit now")
+            exit(0)
 
     def __check_node(self, data: Mapping[str, Any], structure: List[TypedConfigStruct], prefix: str = '') -> bool:
         check_node_result = True
         for struct in structure:
             name = struct['name']
             if name not in data:
-                self.logger.error(f"Config '{prefix}{name}' is not exist in config.yml")
+                self.logger.warning(f"Config '{prefix}{name}' is not exist in config.yml")
                 check_node_result = False
                 continue
             self.logger.debug(f"Checking for '{prefix}{name}'", "CBR")
@@ -114,21 +89,19 @@ class ConfigChecker:
                 self.logger.debug(f"Config '{prefix}{name}' values '{data[name]}'", "CBR")
         return check_node_result
 
+    def __check_config_info(self, data: Mapping[str, Any]):
+        self.logger.debug('Start checking config.yml', "CBR")
+        if self.__check_node(data, CONFIG_STRUCTURE):
+            self.logger.debug('Finished checking config.yml', "CBR")
+        else:
+            self.logger.error('Some config is missing in config.yml')
+            exit(2)
 
-class Config:
-    def __init__(self, logger: CBRLogger):
-        self.logger = logger
-        self.version = CHATBRIDGEREFORGED_VERSION
-        self.lib_version = LIB_VERSION
-        self.config_checker = ConfigChecker(self.logger)
-        self.raw_data = self.config_checker.check_all()
-        try:
-            self.ip = self.raw_data['server_setting']['host_name']
-            self.port = self.raw_data['server_setting']['port']
-            self.aes_key = self.raw_data['server_setting']['aes_key']
-            self.debug = self.raw_data['debug']
-            self.clients = self.raw_data['clients']
-        except AttributeError:
-            exit(0)
-        self.logger.info(f"CBR is now starting at pid {os.getpid()}")
-        self.logger.info(f'version : {self.version}, lib version : {self.lib_version}')
+    def read(self) -> Config:
+        if not os.path.exists(CONFIG_PATH):
+            self.logger.warning("Config file is missing, default config generated")
+            self.__gen_config()
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
+            data: TypedConfig = yaml.safe_load(config)
+        self.__check_config_info(data)
+        return Config(data)
