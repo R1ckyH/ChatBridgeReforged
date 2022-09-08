@@ -1,5 +1,8 @@
-from cbr.lib.config import Config
+import os
+
+from cbr.lib.config import ConfigManager
 from cbr.lib.logger import CBRLogger
+from cbr.lib.zip import Compressor
 from cbr.net.tcpserver import CBRTCPServer
 
 
@@ -7,8 +10,28 @@ class CBRServer:
     def __init__(self):
         # TODO: permission system(happy lazy)
         self.logger = CBRLogger("CBR")
+        self.logger.info(f"CBR is now starting at pid {os.getpid()}")
+
+        if not os.path.exists("config"):
+            os.mkdir("config")
+        if not os.path.exists("plugins"):
+            os.mkdir("plugins")
+
+        self.config_manager = ConfigManager(self.logger)
+        self.config = self.config_manager.read()
+        self.logger.debug_config = self.config.debug
+        self.logger.info(f"Version: {self.config.version}, Lib version: {self.config.lib_version}")
+
+        self.compressor = Compressor(self.logger)
+        self.compressor.zip_log("latest.log", self.config.log["size_to_zip"])
+
+        split_log = self.config.log["split_log"]
+        self.logger.setup(split_log=split_log)
+        if split_log:
+            self.compressor.zip_log("chat.log", self.config.log["size_to_zip_chat"])
+            self.logger.setup(True)
+
         try:
-            self.config = Config(self.logger)
             self.tcp_server = CBRTCPServer(self.logger, self.config)
         except ValueError:
             self.logger.bug()
