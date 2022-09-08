@@ -6,10 +6,11 @@ import shutil
 
 from os import path
 from ruamel import yaml
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, List, Mapping
 # from ruamel.yaml.comments import CommentedMap
 
 from cbr.lib.zip import Compressor
+from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
 
 if TYPE_CHECKING:
     from cbr.lib.logger import CBRLogger
@@ -18,37 +19,37 @@ CHATBRIDGEREFORGED_VERSION = "0.2.7-dev032"
 LIB_VERSION = "v20210915"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
-CONFIG_STRUCTURE = [
+CONFIG_STRUCTURE: List[TypedConfigStruct] = [
     {"name": "server_setting",
      "sub_structure": [
-         {"name": "host_name", },
-         {"name": "port", },
-         {"name": "aes_key", },
+         {"name": "host_name", "sub_structure": [], },
+         {"name": "port", "sub_structure": [], },
+         {"name": "aes_key", "sub_structure": [], },
      ]
      },
     {"name": "debug",
      "sub_structure": [
-         {"name": "all", },
-         {"name": "CBR", },
-         {"name": "plugin", },
+         {"name": "all", "sub_structure": [], },
+         {"name": "CBR", "sub_structure": [], },
+         {"name": "plugin", "sub_structure": [], },
      ]
      },
-    {"name": "clients", },
+    {"name": "clients", "sub_structure": [], },
     {"name": "log",
      "sub_structure": [
-         {"name": "size_to_zip", },
-         {"name": "split_log", },
-         {"name": "size_to_zip_chat", },
+         {"name": "size_to_zip", "sub_structure": [], },
+         {"name": "split_log", "sub_structure": [], },
+         {"name": "size_to_zip_chat", "sub_structure": [], },
      ]
      }
 ]
 
 
 class ConfigChecker:
-    def __init__(self, logger: "CBRLogger"):
+    def __init__(self, logger: CBRLogger):
         self.logger = logger
 
-    def check_all(self):
+    def get_checked_data(self) -> TypedConfig:
         if not path.exists("config"):
             os.mkdir("config")
         if not path.exists("plugins"):
@@ -58,7 +59,7 @@ class ConfigChecker:
             self.__gen_config()
         else:
             with open(CONFIG_PATH, "r", encoding="utf-8") as config:
-                data = yaml.safe_load(config)
+                data: TypedConfig = yaml.safe_load(config)
             try:
                 self.logger.debug_config = data["debug"]
                 self.logger.debug_all = self.logger.debug_config["all"]
@@ -74,7 +75,7 @@ class ConfigChecker:
                 self.logger.setup()
                 raise ValueError("Some config is missing in config.yml")
         self.logger.debug("Checking config ......", "CBR")
-        self.__check_config_info(data)
+        self.__check_config_contents(data)
         return data
 
     def __gen_config(self):
@@ -88,36 +89,32 @@ class ConfigChecker:
             self.logger.info("Exit now")
             exit(0)  # exit here
 
-    def __check_config_info(self, data):
+    def __check_config_contents(self, data: Mapping[str, Any]):
         self.logger.debug("Checking config.yml", "CBR")
-        if not self.__check_node(data, CONFIG_STRUCTURE):
+        if self.__check_node(data, CONFIG_STRUCTURE):
+            self.logger.debug("Finish config check", "CBR")
+        else:
             self.logger.setup()
             raise ValueError("Some config is missing in config.yml")
-        else:
-            self.logger.debug("Finish config check", "CBR")
 
-    def __check_node(self, data, structure):
+    def __check_node(self, data: Mapping[str, Any], structure: List[TypedConfigStruct], prefix: str = "") -> bool:
         check_node_result = True
-        for i in range(len(structure)):
-            struct = structure[i]
-            if struct["name"] not in data.keys():
+        for struct in structure:
+            name = struct["name"]
+            if name not in data:
+                self.logger.error(f"Config '{prefix}{name}' is not exist in config.yml")
                 check_node_result = False
-                self.logger.error("Config " + struct["name"] + " not exist in config.yml")
-                break
-            elif "sub_structure" in struct.keys():
-                self.logger.debug(f"Checking for '{structure[i]['name']}'", "CBR")
-                if not self.__check_node(data[struct["name"]], struct["sub_structure"]):
-                    check_node_result = False
-                    self.logger.error("Config " + struct["name"] + " not exist in config.yml")
-                    break
+                continue
+            self.logger.debug(f"Checking for '{prefix}{name}'", "CBR")
+            if "sub_structure" in struct and len(struct["sub_structure"]) != 0:
+                flag = self.__check_node(data[name], struct["sub_structure"], f"{prefix}{name}.")
+                check_node_result = check_node_result and flag
+                continue
+            if prefix == "" and name == "clients":  # special case handling due to client size are custom by user
+                values = ", ".join([f"'{d['name']}'" for d in data[name]])
+                self.logger.debug(f"Clients are: {values}", "CBR")
             else:
-                if struct["name"] == "clients":
-                    msg = "Clients are:"
-                    for j in range(len(data[struct["name"]])):
-                        msg = msg + f" '{data[struct['name']][j]['name']}'"
-                    self.logger.debug(msg, "CBR")
-                else:
-                    self.logger.debug(f"Config '{struct['name']}' values '{data[struct['name']]}'", "CBR")
+                self.logger.debug(f"Config '{prefix}{name}' values '{data[name]}'", "CBR")
         return check_node_result
 
 
@@ -148,7 +145,7 @@ class Config:
     def init_config(self, logger: "CBRLogger"):
         self.logger = logger
         self.config_checker = ConfigChecker(self.logger)
-        self.raw_data = self.config_checker.check_all()
+        self.raw_data = self.config_checker.get_checked_data()
         self.__init_data()
         self.logger.info(f"CBR is now starting at pid {os.getpid()}")
         self.logger.info(f"version : {self.version}, lib version : {self.lib_version}")
