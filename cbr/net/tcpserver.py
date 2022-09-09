@@ -9,7 +9,7 @@ from cbr.lib.logger import CBRLogger
 from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
 from cbr.plugin.plugin import PluginManager
-from cbr.plugin.rtext import *
+from cbr.plugin.rtext import RAction, RText
 
 
 def rtext_cmd(txt, msg, cmd):
