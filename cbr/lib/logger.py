@@ -1,22 +1,23 @@
 import logging
 import sys
 import traceback
-
-from os import path, mkdir
+from typing import Optional
 
 from cbr.lib.typeddicts import TypedDebugConfig
 
-LOG_FILE = "logs"
-LOG_PATH = LOG_FILE + "/latest.log"
-CHAT_LOG_PATH = LOG_FILE + "/chat.log"
-DEFAULT_DEBUG_CONFIG: TypedDebugConfig = {"all": False, "CBR": False, "plugin": False}
+DEFAULT_LOG_PATH = "logs"
+LOG_FILE = "/latest.log"
+CHAT_LOG_FILE = "/chat.log"
+DEFAULT_DEBUG_CONFIG: TypedDebugConfig = {
+    "all": False, "CBR": False, "plugin": False
+}
 
 logger_black_list = ["ping", "Result of", "- ", "Client ", "Ping client", "Send Command", "Unknown "]  # File handler
 logger_black_arg2 = ["joined", "left"]  # File handler
 
 
 class StdoutFilter(logging.Filter):
-    def __init__(self, chat=False, split_log=True):
+    def __init__(self, chat: bool, split_log: bool):
         super().__init__()
         self.chat = chat
         self.split_log = split_log
@@ -24,51 +25,54 @@ class StdoutFilter(logging.Filter):
     def filter(self, record: logging.LogRecord):
         msg = record.getMessage()
         if self.split_log:
-            if self.chat:
-                if record.levelname != "CHAT":
-                    return False
-            elif record.levelname == "CHAT":
+            if self.chat ^ (record.levelname != "CHAT"):
                 return False
         args = msg.split(" ")
         # print(record.levelname)
         if len(args) == 4:
-            for i in range(len(logger_black_arg2)):
-                if args[2] == logger_black_arg2[i]:
-                    return False
-        for i in range(len(logger_black_list)):
-            if msg.startswith(logger_black_list[i]):
+            if args[2] in logger_black_arg2:
+                return False
+        for i in logger_black_list:
+            if msg.startswith(i):
                 return False
         return True
 
 
 class CBRLogger(logging.getLoggerClass()):
-    def __init__(self, name):
-        if not path.exists(LOG_FILE):
-            mkdir(LOG_FILE)
+    def __init__(self, name: str):
         super().__init__(name)
-        self.file_handler = None
-        self.stdout_handler = logging.StreamHandler(sys.stdout)
+        self.path = DEFAULT_LOG_PATH
         self.debug_config = DEFAULT_DEBUG_CONFIG
-        self.stdout_handler.setFormatter(self.formatter("%H:%M:%S"))
-        self.addHandler(self.stdout_handler)
         logging.addLevelName(21, "CHAT")
-        self.setLevel(logging.DEBUG)
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(self.__formatter("%H:%M:%S"))
+        sh.setLevel(logging.DEBUG)
+        self.addHandler(sh)
 
     @staticmethod
-    def formatter(date=None):
-        return logging.Formatter("[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s", datefmt=date)
+    def __formatter(self, datefmt: Optional[str] = None) -> logging.Formatter:
+        return logging.Formatter(
+            "[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s",
+            datefmt=datefmt
+        )
 
-    def setup(self, debug_config: TypedDebugConfig, chat=False, split_log=True):
-        self.debug_config = debug_config
+    def __file_handler(self, chat: bool, split_log: bool) -> logging.FileHandler:
         if chat:
-            path_name = CHAT_LOG_PATH
+            path = self.path + CHAT_LOG_FILE
         else:
-            path_name = LOG_PATH
-        self.file_handler = logging.FileHandler(path_name, encoding="utf-8")
-        self.file_handler.setFormatter(self.formatter("%d-%m-%Y %H:%M:%S"))
-        self.file_handler.addFilter(StdoutFilter(chat, split_log))
-        self.addHandler(self.file_handler)
-        self.setLevel(logging.DEBUG)
+            path = self.path + LOG_FILE
+        fh = logging.FileHandler(path, encoding="utf-8")
+        fh.setFormatter(self.__formatter("%d-%m-%Y %H:%M:%S"))
+        fh.addFilter(StdoutFilter(chat, split_log))
+        fh.setLevel(logging.DEBUG)
+        return fh
+
+    def setup(self, debug_config: TypedDebugConfig, split_log: bool, path=DEFAULT_LOG_PATH) -> None:
+        self.path = path
+        self.debug_config = debug_config
+        self.addHandler(self.__file_handler(False, split_log))
+        if split_log:
+            self.addHandler(self.__file_handler(True, split_log))
 
     def bug(self, error=True, exit_now=False):
         for line in traceback.format_exc().splitlines():
@@ -105,6 +109,6 @@ class CBRLogger(logging.getLoggerClass()):
 if __name__ == "__main__":
     logging.setLoggerClass(CBRLogger)
     b = CBRLogger("CBR")
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s")
-    b.setLevel(20)
+    logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s")
+    b.setLevel(logging.DEBUG)
     b.info("testing")

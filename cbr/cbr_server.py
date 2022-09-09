@@ -27,6 +27,8 @@ class CBRServer:
 
         if not os.path.exists("config"):
             os.mkdir("config")
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
         if not os.path.exists("plugins"):
             os.mkdir("plugins")
 

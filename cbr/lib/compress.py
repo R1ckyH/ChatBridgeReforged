@@ -17,7 +17,6 @@ class CompressManager:
         self.logger.setup(debug_config, split_log=log_config["split_log"])
         if log_config["split_log"]:
             self.zip_log("latest.log", log_config["size_to_zip_chat"], "chat_")
-            self.logger.setup(debug_config, True)
 
     def zip_log(self, file_name, max_size, prefix=""):
         self.logger.debug(f"Start zip file: '{file_name}'", "CBR")
