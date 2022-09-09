@@ -1,6 +1,6 @@
-from datetime import datetime
 import os
 import zipfile
+from datetime import datetime
 
 from cbr.lib.logger import CBRLogger
 

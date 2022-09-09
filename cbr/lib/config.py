@@ -5,9 +5,11 @@ import os
 import shutil
 from typing import Any, List, Mapping, NoReturn
 
+from ruamel import yaml  # type: ignore
+
 from cbr.lib.logger import CBRLogger
 from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
-from ruamel import yaml  # type: ignore
+
 
 # from ruamel.yaml.comments import CommentedMap
 
