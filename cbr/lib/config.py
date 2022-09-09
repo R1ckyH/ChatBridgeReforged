@@ -40,17 +40,6 @@ CONFIG_STRUCTURE: List[TypedConfigStruct] = [
 ]
 
 
-class Config:
-    def __init__(self, data: TypedConfig):
-        self.log = data["log"]
-        self.ip = data["server_setting"]["host_name"]
-        self.port = data["server_setting"]["port"]
-        self.aes_key = data["server_setting"]["aes_key"]
-        self.debug = data["debug"]
-        self.clients = data["clients"]
-        self.raw_data = data
-
-
 class ConfigManager:
     def __init__(self, logger: CBRLogger):
         self.logger = logger
@@ -79,7 +68,7 @@ class ConfigManager:
                 flag = self.__check_node(data[name], struct["sub_structure"], f"{prefix}{name}.")
                 check_node_result = check_node_result and flag
                 continue
-            if prefix == "" and name == "clients":  # special case handling due to client size are custom by user
+            if prefix == "" and name == "clients":
                 values = ", ".join([f"'{d['name']}'" for d in data[name]])
                 self.logger.debug(f"Clients are: {values}", "CBR")
             else:
@@ -94,11 +83,11 @@ class ConfigManager:
             self.logger.error("Some config is missing in config.yml")
             exit(2)
 
-    def read(self) -> Config:
+    def read(self) -> TypedConfig:
         if not os.path.exists(CONFIG_PATH):
             self.logger.warning("Config file is missing, default config generated")
             self.__gen_config()
         with open(CONFIG_PATH, "r", encoding="utf-8") as config:
             data: TypedConfig = yaml.safe_load(config)
         self.__check_config_contents(data)
-        return Config(data)
+        return data

@@ -61,7 +61,6 @@ class Process:
     def __init__(self, tcp_server: "CBRTCPServer", logger: CBRLogger):
         self.server = tcp_server
         self.logger = logger
-        self.config = tcp_server.config
         self.plugin_manager: "PluginManager" = self.server.plugin_manager
         self.formatter = formatter
 
@@ -241,15 +240,16 @@ class ClientProcess(Process):
             self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {cbr.__lib_version__}")
         return lib_version
 
-    def login(self, name, password, clients):
-        for i in range(len(clients)):
-            if clients[i]["name"] == name:
-                if clients[i]["password"] == password:
-                    return True
-                else:
-                    self.logger.error(f"Wrong password from client {name}'s login")
-                    self.logger.debug(
-                        f"Client password is {password}, not same with {clients[i]['password']} in config.yml", "CBR")
+    def login(self, name, password):
+        if name in self.server.clients.keys() and self.server.clients[name].name == name:
+            client = self.server.clients[name]
+            if client.password == password:
+                return True
+            else:
+                self.logger.error(f"Wrong password from client {name}'s login")
+                self.logger.debug(
+                    f"Client password is '{password}', not same with '{client.password}' in config.yml", "CBR")
+                return False
         self.logger.error(f"Client {name} not found in config.yml")
         return False
 
@@ -258,7 +258,7 @@ class ClientProcess(Process):
             if msg["action"] == "login":
                 lib_version = self.version_check(msg)
                 client_type = self.client_type_check(msg)
-                if self.login(msg["name"], msg["password"], self.server.config.clients):
+                if self.login(msg["name"], msg["password"]):
                     self.current_client = msg["name"]
                     await self.add_new_client(stream, msg["name"], lib_version, client_type)
                     await self.server.send_login_result(stream, target=self.current_client)

@@ -1,11 +1,22 @@
 import os
 import trio
 
+from typing import Dict, List
+
 import cbr
 from cbr.lib.compress import CompressManager
+from cbr.lib.client import Client
 from cbr.lib.config import ConfigManager
 from cbr.lib.logger import CBRLogger
+from cbr.lib.typeddicts import TypedClientsConfig
 from cbr.net.tcpserver import CBRTCPServer
+
+
+def setup_client(config: List[TypedClientsConfig]) -> Dict[str, Client]:
+    result: Dict[str, Client] = {}
+    for d in config:
+        result[d['name']] = Client(d['name'], d['password'])
+    return result
 
 
 class CBRServer:
@@ -23,18 +34,14 @@ class CBRServer:
         self.compress_manager = CompressManager(self.logger, "logs")
 
     async def start(self):
-        config = self.config_manager.read()
-        self.compress_manager.compress_setup_log(config["log"], config["debug"])
-        self.logger.info(f"Version: {cbr.__version__}, Lib version: {cbr.__lib_version__}")
         try:
-            tcp_server = CBRTCPServer(self.logger, config)
-        except ValueError:
-            self.logger.bug()
-            self.logger.warning("Please check config.yml carefully")
-            self.logger.info("Exit now")
-            exit(0)
+            config = self.config_manager.read()
+            self.compress_manager.compress_setup_log(config["log"], config["debug"])
+            self.logger.info(f"Version: {cbr.__version__}, Lib version: {cbr.__lib_version__}")
+            clients = setup_client(config["clients"])
+            tcp_server = CBRTCPServer(self.logger, config["server_setting"], clients)
+            async with trio.open_nursery() as root:
+                root.start_soon(tcp_server.run)  # type: ignore
+                # There can be more services parallelly running
         except Exception:
             self.logger.bug(exit_now=True)
-        async with trio.open_nursery() as root:
-            root.start_soon(tcp_server.run)  # type: ignore
-            # There can be more services parallelly running
