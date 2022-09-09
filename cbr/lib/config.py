@@ -3,7 +3,7 @@ CBR config file stuffs
 """
 import os
 import shutil
-from ruamel import yaml
+from ruamel import yaml  # type: ignore
 from typing import Any, List, Mapping, NoReturn
 
 from cbr.lib.logger import CBRLogger
@@ -44,7 +44,7 @@ class ConfigManager:
     def __init__(self, logger: CBRLogger):
         self.logger = logger
 
-    def __gen_config(self):
+    def __gen_config(self) -> NoReturn:
         if not os.path.exists(DEFAULT_CONFIG_PATH):
             self.logger.error("Default config not found, re-installing ChatBridgeReforged may fix the problem")
             exit(1)
@@ -88,6 +88,6 @@ class ConfigManager:
             self.logger.warning("Config file is missing, default config generated")
             self.__gen_config()
         with open(CONFIG_PATH, "r", encoding="utf-8") as config:
-            data: TypedConfig = yaml.safe_load(config)
+            data: TypedConfig = yaml.safe_load(config)  # type: ignore
         self.__check_config_contents(data)
         return data
