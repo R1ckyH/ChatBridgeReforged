@@ -1,10 +1,10 @@
 import json
 import trio
+from typing import Dict
 
 from functools import partial
 
 from cbr.lib.client import Client
-from cbr.lib.config import Config
 from cbr.lib.logger import CBRLogger
 from cbr.net.network import Network
 from cbr.net.process import ServerProcess, ClientProcess
@@ -17,14 +17,11 @@ def rtext_cmd(txt, msg, cmd):
 
 
 class CBRTCPServer(Network):
-    def __init__(self, logger: CBRLogger, config: 'Config'):
+    def __init__(self, logger: CBRLogger, ip: str, port: int, aes_key: str, clients: Dict[str, Client]) -> None:
+        super().__init__(logger, aes_key, clients)
         self.logger = logger
-        self.config = config
-        self.lib_version = self.config.lib_version
-        self.ip = self.config.ip
-        self.port = self.config.port
-        self.clients = self.setup_client()
-        super().__init__(logger, self.config.aes_key, self.clients)
+        self.ip = ip
+        self.port = port
         self.plugin_manager = None
         self.process = None
         self.nursery = None
@@ -32,9 +29,6 @@ class CBRTCPServer(Network):
         self.token = None
         self.server_running = False
         # TODO: better exception
-
-    def start(self):
-        trio.run(self.run)
 
     async def run(self):
         self.server_running = True
@@ -58,13 +52,6 @@ class CBRTCPServer(Network):
         self.server_running = False
         await self.plugin_manager.unload_all_plugins()
         self.logger.info("Server closed")
-
-    def setup_client(self):
-        client_config = self.config.clients
-        client_dict = {}
-        for i in client_config:
-            client_dict.update({i['name']: Client(i['name'], i['password'])})
-        return client_dict
 
     async def close_all_connection(self):
         for i in self.clients.keys():

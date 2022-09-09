@@ -1,11 +1,13 @@
 """
 Entry for CBR
 """
+import trio
+
 from cbr import cbr_server
 
 
 def main():
-    cbr_server.start()
+    trio.run(cbr_server.start)  # type: ignore
 
 
 if __name__ == '__main__':
