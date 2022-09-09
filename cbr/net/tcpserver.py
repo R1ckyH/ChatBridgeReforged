@@ -32,9 +32,6 @@ class CBRTCPServer(Network):
         self.server_running = False
         # TODO: better exception
 
-    def start(self):
-        trio.run(self.run)
-
     async def run(self):
         self.server_running = True
         self.token = trio.lowlevel.current_trio_token()

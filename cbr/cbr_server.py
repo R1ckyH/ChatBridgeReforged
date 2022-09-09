@@ -1,4 +1,5 @@
 import os
+import trio
 
 import cbr
 from cbr.lib.compress import CompressManager
@@ -21,7 +22,7 @@ class CBRServer:
         self.config_manager = ConfigManager(self.logger)
         self.compress_manager = CompressManager(self.logger, "logs")
 
-    def start(self):
+    async def start(self):
         config = self.config_manager.read()
         self.compress_manager.compress_setup_log(config["log"], config["debug"])
         self.logger.info(f"Version: {cbr.__version__}, Lib version: {cbr.__lib_version__}")
@@ -34,8 +35,6 @@ class CBRServer:
             exit(0)
         except Exception:
             self.logger.bug(exit_now=True)
-        else:
-            try:
-                tcp_server.start()
-            except Exception:
-                self.logger.bug(exit_now=True)
+        async with trio.open_nursery() as root:
+            root.start_soon(tcp_server.run)  # type: ignore
+            # There can be more services parallelly running
