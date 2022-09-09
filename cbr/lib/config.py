@@ -11,9 +11,6 @@ from ruamel import yaml
 
 # from ruamel.yaml.comments import CommentedMap
 
-
-CHATBRIDGEREFORGED_VERSION = "0.3.0-dev001"
-LIB_VERSION = "v20220908"
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
 CONFIG_STRUCTURE: List[TypedConfigStruct] = [
@@ -40,18 +37,6 @@ CONFIG_STRUCTURE: List[TypedConfigStruct] = [
      ]
      }
 ]
-
-
-class Config:
-    def __init__(self, data: TypedConfig):
-        self.version = CHATBRIDGEREFORGED_VERSION
-        self.lib_version = LIB_VERSION
-        self.ip = data['server_setting']['host_name']
-        self.port = data['server_setting']['port']
-        self.aes_key = data['server_setting']['aes_key']
-        self.debug = data['debug']
-        self.clients = data['clients']
-        self.raw_data = data
 
 
 class ConfigManager:
@@ -97,11 +82,11 @@ class ConfigManager:
             self.logger.error('Some config is missing in config.yml')
             exit(2)
 
-    def read(self) -> Config:
+    def read(self) -> TypedConfig:
         if not os.path.exists(CONFIG_PATH):
             self.logger.warning("Config file is missing, default config generated")
             self.__gen_config()
         with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
             data: TypedConfig = yaml.safe_load(config)
         self.__check_config_info(data)
-        return Config(data)
+        return data
