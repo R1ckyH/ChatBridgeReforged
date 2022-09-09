@@ -58,7 +58,8 @@ class CBRLogger(logging.getLoggerClass()):
     def formatter(date=None):
         return logging.Formatter("[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s", datefmt=date)
 
-    def setup(self, chat=False, split_log=True):
+    def setup(self, debug_config: TypedDebugConfig, chat=False, split_log=True):
+        self.debug_config = debug_config
         if chat:
             path_name = CHAT_LOG_PATH
         else:
