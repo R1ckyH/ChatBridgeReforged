@@ -11,7 +11,15 @@ DEFAULT_DEBUG_CONFIG: TypedDebugConfig = {
     "all": False, "CBR": False, "plugin": False
 }
 
-logger_black_list = ['ping', 'Result of', '- ', 'Client ', 'Ping client', 'Send Command', 'Unknown ']  # File handler
+logger_black_list = [
+    'ping',
+    'Result of',
+    '- ',
+    'Client ',
+    'Ping client',
+    'Send Command',
+    'Unknown '
+]  # File handler
 logger_black_arg2 = ['joined', 'left']  # File handler
 
 
@@ -51,11 +59,14 @@ class CBRLogger(logging.getLoggerClass()):
 
     def __formatter(self, datefmt: Optional[str] = None) -> logging.Formatter:
         return logging.Formatter(
-            '[%(name)s] [%(asctime)s] [%(threadName)s/%(levelname)s]: %(message)s',
+            '[%(name)s] [%(asctime)s] '
+            '[%(threadName)s/%(levelname)s]: %(message)s',
             datefmt=datefmt
         )
 
-    def __file_handler(self, chat: bool, split_log: bool) -> logging.FileHandler:
+    def __file_handler(
+        self, chat: bool, split_log: bool
+    ) -> logging.FileHandler:
         fh = logging.FileHandler(LOG_PATH, encoding='utf-8')
         fh.setFormatter(self.__formatter('%d-%m-%Y %H:%M:%S'))
         fh.addFilter(StdoutFilter(chat, split_log))
@@ -68,7 +79,7 @@ class CBRLogger(logging.getLoggerClass()):
         if split_log:
             self.addHandler(self.__file_handler(True, split_log))
 
-    def bug(self, error=True, exit_now=False):
+    def bug(self, error: bool = True, exit_now: bool = False) -> None:
         for line in traceback.format_exc().splitlines():
             if error:
                 self.error(line, exc_info=False)
@@ -79,11 +90,13 @@ class CBRLogger(logging.getLoggerClass()):
                 self.error('ERROR exist, use debug mode for more information')
             exit(0)
 
-    def debug(self, msg, module='all', *args) -> None:
+    def debug(  # type: ignore
+        self, msg: str, module: str = 'all', *args: object
+    ) -> None:
         if self.debug_config[module] or self.debug_config['all']:
             super().debug(msg, *args)
 
-    def chat(self, msg):
+    def chat(self, msg: str) -> None:
         self.log(21, msg)
 
     # no use
@@ -94,15 +107,20 @@ class CBRLogger(logging.getLoggerClass()):
         self.addHandler(self.stdout_handler)
         self.addHandler(self.file_handler)'''
 
-    def force_debug(self, module='all'):
+    def force_debug(self, module: str = 'all'):
         self.debug_config[module] = not self.debug_config[module]
-        self.info(f'- Force debug mode of {module}: {self.debug_config[module]}')
+        self.info(
+            f'- Force debug mode of {module}: {self.debug_config[module]}'
+        )
         self.debug('test', "CBR")
 
 
 if __name__ == '__main__':
     logging.setLoggerClass(CBRLogger)
     b = CBRLogger("CBR")
-    logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s]  - %(name)s - %(levelname)s - %(message)s'
+    )
     b.setLevel(logging.DEBUG)
     b.info("testing")

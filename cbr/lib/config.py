@@ -7,7 +7,7 @@ from typing import Any, List, Mapping, NoReturn
 
 from cbr.lib.logger import CBRLogger
 from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
-from ruamel import yaml
+from ruamel import yaml  # type: ignore
 
 # from ruamel.yaml.comments import CommentedMap
 
@@ -40,38 +40,55 @@ CONFIG_STRUCTURE: List[TypedConfigStruct] = [
 
 
 class ConfigManager:
+
     def __init__(self, logger: CBRLogger):
         self.logger = logger
 
     def __gen_config(self) -> NoReturn:
         if not os.path.exists(DEFAULT_CONFIG_PATH):
-            self.logger.error('Default config not found, re-installing ChatBridgeReforged may fix the problem')
+            self.logger.error(
+                'Default config not found, '
+                're-installing ChatBridgeReforged may fix the problem'
+            )
             exit(1)
         else:
             shutil.copyfile(DEFAULT_CONFIG_PATH, CONFIG_PATH)
             self.logger.warning("Default config is used now")
-            self.logger.warning("Please configure the config and restart again")
+            self.logger.warning(
+                "Please configure the config and restart again"
+            )
             self.logger.warning("Exit now")
             exit(0)
 
-    def __check_node(self, data: Mapping[str, Any], structure: List[TypedConfigStruct], prefix: str = '') -> bool:
+    def __check_node(
+        self,
+        data: Mapping[str, Any],
+        structure: List[TypedConfigStruct],
+        prefix: str = ''
+    ) -> bool:
         check_node_result = True
         for struct in structure:
             name = struct['name']
             if name not in data:
-                self.logger.warning(f"Config '{prefix}{name}' is not exist in config.yml")
+                self.logger.warning(
+                    f"Config '{prefix}{name}' is not exist in config.yml"
+                )
                 check_node_result = False
                 continue
             self.logger.debug(f"Checking for '{prefix}{name}'", "CBR")
             if 'sub_structure' in struct and len(struct['sub_structure']) != 0:
-                flag = self.__check_node(data[name], struct['sub_structure'], f"{prefix}{name}.")
+                flag = self.__check_node(
+                    data[name], struct['sub_structure'], f"{prefix}{name}."
+                )
                 check_node_result = check_node_result and flag
                 continue
             if prefix == '' and name == 'clients':
                 values = ', '.join([f"'{d['name']}'" for d in data[name]])
                 self.logger.debug(f'Clients are: {values}', "CBR")
             else:
-                self.logger.debug(f"Config '{prefix}{name}' values '{data[name]}'", "CBR")
+                self.logger.debug(
+                    f"Config '{prefix}{name}' values '{data[name]}'", "CBR"
+                )
         return check_node_result
 
     def __check_config_info(self, data: Mapping[str, Any]):
@@ -84,9 +101,11 @@ class ConfigManager:
 
     def read(self) -> TypedConfig:
         if not os.path.exists(CONFIG_PATH):
-            self.logger.warning("Config file is missing, default config generated")
+            self.logger.warning(
+                "Config file is missing, default config generated"
+            )
             self.__gen_config()
         with open(CONFIG_PATH, 'r', encoding='utf-8') as config:
-            data: TypedConfig = yaml.safe_load(config)
+            data: TypedConfig = yaml.safe_load(config)  # type: ignore
         self.__check_config_info(data)
         return data
