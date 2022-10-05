@@ -984,11 +984,11 @@ def on_message(server: 'CBRInterface', info: 'MessageInfo'):
         msg = info.content
         if disable_join_left and len(args) == 3 and (args[1] == 'joined' or args[1] == 'left'):
             return
-        if msg.lower().startswith('##khl') or msg.lower().startswith('dc '):
+        if msg.lower().startswith('##khl') or msg.lower().startswith('khl '):
             msg = replace_message(msg)
             if not custom_check_send('less', msg, info.source_client, info.sender, server):
                 custom_check_send('full', msg, info.source_client, info.sender, server)
-        else:
+        elif info.sender == "mc":
             if check_start(info.content):
                 custom_check_send('full', info.content, info.source_client, info.sender, server)
 

@@ -1067,7 +1067,7 @@ def on_message(server: 'CBRInterface', info: 'MessageInfo'):
             msg = replace_message(msg)
             if not custom_check_send('less', msg, info.source_client, info.sender, server):
                 custom_check_send('full', msg, info.source_client, info.sender, server)
-        else:
+        elif info.sender == "mc":
             if check_start(info.content):
                 custom_check_send('full', info.content, info.source_client, info.sender, server)
 
