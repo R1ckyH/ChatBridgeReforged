@@ -12,7 +12,7 @@ from chatbridgereforged_mc.constants import *
 
 
 class CBRTCPClient(Network):
-    def __init__(self, config: 'Config', logger: CBRLogger, server=None):
+    def __init__(self, config: "Config", logger: CBRLogger, server=None):
         self.config = config
         self.logger = logger
         self.server: PluginServerInterface = server
@@ -43,7 +43,7 @@ class CBRTCPClient(Network):
     def try_start(self, info=None, auto_connect=False):
         if not self.connected and not self.connecting:
             self.connecting = True
-            threading.Thread(target=self.start, name='CBR', args=(info,), daemon=True).start()
+            threading.Thread(target=self.start, name="CBR", args=(info,), daemon=True).start()
         elif not auto_connect:
             if info is not None:
                 self.logger.print_msg("Already Connected to server", 2, info, server=self.server, error=True)
@@ -53,7 +53,7 @@ class CBRTCPClient(Network):
     def start(self, info):
         self.cancelled = False
         self.logger.print_msg(f"Connecting to server '{self.config.host_name}:{self.config.host_port}' with client name {self.name}", 2, info=info, server=self.server)
-        self.logger.info(f'version : {VERSION}, lib version : {LIB_VERSION}')
+        self.logger.info(f"version : {VERSION}, lib version : {LIB_VERSION}")
         self.socket = soc.socket()
         try:
             self.socket.connect((self.config.host_name, self.config.host_port))
@@ -79,7 +79,7 @@ class CBRTCPClient(Network):
             self.connected = False
             self.connecting = False
 
-    def close_connection(self, target=''):
+    def close_connection(self, target=""):
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
@@ -120,11 +120,11 @@ class CBRTCPClient(Network):
             try:
                 self.client_process()
             except soc.timeout:
-                self.logger.error('Connection time out!')
-                self.logger.debug('Closed connection to server')
+                self.logger.error("Connection time out!")
+                self.logger.debug("Closed connection to server")
                 break
             except ConnectionAbortedError:
-                self.logger.info('Connection closed')
+                self.logger.info("Connection closed")
                 self.logger.bug_log()
                 break
             except Exception:

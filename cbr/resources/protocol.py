@@ -6,7 +6,7 @@ import sys
 
 # Config
 # TODO: split mcdr and mc command(next version?)
-'''
+"""
 plugin:##CBR
 数据包格式：
 4 byte长的unsigned int代表长度，随后是所指长度的加密字符串，解密后为一个json
@@ -126,7 +126,7 @@ clientA <- server <- clientB
         "result": "STRING" // if good
     }
 }
-'''
+"""
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit()

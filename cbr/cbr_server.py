@@ -7,13 +7,13 @@ class CBRServer:
     def __init__(self):
         # TODO: permission system(happy lazy)
         self.config = Config()
-        self.logger = CBRLogger('CBR', self.config)
+        self.logger = CBRLogger("CBR", self.config)
         try:
             self.config.init_config(self.logger)
             self.tcp_server = CBRTCPServer(self.logger, self.config)
         except ValueError:
             self.logger.bug()
-            self.logger.warning('Please check config.yml carefully')
+            self.logger.warning("Please check config.yml carefully")
             self.logger.info("Exit now")
             exit(0)
         except Exception:

@@ -36,9 +36,9 @@ def on_info(server: PluginServerInterface, info: Info):
     msg = info.content
     if msg.startswith(PREFIX) or msg.startswith(PREFIX2):
         info.cancel_send_to_server()
-        # if msg.endswith('<--[HERE]'):
-        #    msg = msg.replace('<--[HERE]', '')
-        client.process.input_process(msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', ""), server, info)
+        # if msg.endswith("<--[HERE]"):
+        #    msg = msg.replace("<--[HERE]", "")
+        client.process.input_process(msg.replace(PREFIX + " ", "").replace(PREFIX2 + " ", ""), server, info)
     else:
         if client is None:
             return
@@ -50,12 +50,12 @@ def on_info(server: PluginServerInterface, info: Info):
 
 def on_player_joined(server, name, info=None):
     client.try_start()
-    client.send_msg(client.socket, msg_json_formatter(client.name, '', name + ' joined ' + client.name))
+    client.send_msg(client.socket, msg_json_formatter(client.name, "", name + " joined " + client.name))
 
 
 def on_player_left(server, name, info=None):
     client.try_start()
-    client.send_msg(client.socket, msg_json_formatter(client.name, '', name + ' left ' + client.name))
+    client.send_msg(client.socket, msg_json_formatter(client.name, "", name + " left " + client.name))
 
 
 def on_unload(server):
@@ -75,5 +75,5 @@ def on_load(server, old):
     main(server)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

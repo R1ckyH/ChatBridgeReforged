@@ -15,14 +15,14 @@ if TYPE_CHECKING:
 class CBRLogger:
     def __init__(self):
         self._debug_mode = False
-        self.log_path = ''
-        self.chat_path = ''
+        self.log_path = ""
+        self.chat_path = ""
         self.client = None
         self.config = None
 
-    def load(self, config: 'Config', client_class=None):
-        self.config: 'Config' = config
-        self.client: 'CBRTCPClient' = client_class
+    def load(self, config: "Config", client_class=None):
+        self.config: "Config" = config
+        self.client: "CBRTCPClient" = client_class
         self._debug_mode = config.debug_mode
         self.log_path = config.log_path
         self.chat_path = config.chat_path
@@ -45,42 +45,42 @@ class CBRLogger:
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
         msg = re.sub("§.", "", str(msg))
-        heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
+        heading = "[CBR] " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
-            msg = heading + '[CHAT]: ' + msg
+            msg = heading + "[CHAT]: " + msg
             if self.config.split_chat_log:
-                if self.chat_path != '':
-                    print(msg + '\n', end='')
-                    with open(self.chat_path, 'a+', encoding='utf-8') as log:
-                        log.write(msg + '\n')
+                if self.chat_path != "":
+                    print(msg + "\n", end="")
+                    with open(self.chat_path, "a+", encoding="utf-8") as log:
+                        log.write(msg + "\n")
                 return
         elif error:
-            msg = heading + '[ERROR]: ' + msg
+            msg = heading + "[ERROR]: " + msg
         elif debug:
             if not self._debug_mode:
                 return
-            msg = heading + '[DEBUG]: ' + msg
+            msg = heading + "[DEBUG]: " + msg
         else:
-            msg = heading + '[INFO]: ' + msg
+            msg = heading + "[INFO]: " + msg
         if not not_spam:
-            print(msg + '\n', end='')
-            if self.log_path != '':
-                with open(self.log_path, 'a+', encoding='utf-8') as log:
-                    log.write(msg + '\n')
+            print(msg + "\n", end="")
+            if self.log_path != "":
+                with open(self.log_path, "a+", encoding="utf-8") as log:
+                    log.write(msg + "\n")
 
     def bug_log(self, error=False):
-        self.error('bug exist')
+        self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:
                 self.error(line)
             else:
                 self.debug(line)
 
-    def print_msg(self, msg, num, info=None, server: ServerInterface = None, player='', error=False, debug=False, not_spam=False, chat=False):
+    def print_msg(self, msg, num, info=None, server: ServerInterface = None, player="", error=False, debug=False, not_spam=False, chat=False):
         if num == 0:
             if self.client.server is not None:
                 if server is not None:
-                    if player == '':
+                    if player == "":
                         server.say(msg)
                     else:
                         server.tell(player, msg)
@@ -98,4 +98,4 @@ class CBRLogger:
 
     def force_debug(self, info=None, server=None):
         self._debug_mode = not self._debug_mode
-        self.print_msg(f'force debug: {self._debug_mode}', 2, info, server=server)
+        self.print_msg(f"force debug: {self._debug_mode}", 2, info, server=server)

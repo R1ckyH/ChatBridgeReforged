@@ -37,13 +37,13 @@ class Plugin:
 
     def __init_metadata(self):
         self.gen_metadata()
-        self.id = self.get_data('id')
-        self.version = self.get_data('version')
-        self.name = self.get_data('name')
-        self.description = self.get_data('description')
-        self.author = self.get_data('author')
-        self.link = self.get_data('link')
-        self.dependencies = self.get_data('dependencies')
+        self.id = self.get_data("id")
+        self.version = self.get_data("version")
+        self.name = self.get_data("name")
+        self.description = self.get_data("description")
+        self.author = self.get_data("author")
+        self.link = self.get_data("link")
+        self.dependencies = self.get_data("dependencies")
 
     def check_change(self):
         last_edit_time = os.path.getmtime(self.path_name)
@@ -63,13 +63,13 @@ class Plugin:
 
     def __get_default_metadata(self, data=None):
         metadata = {
-            'id': self.name,
-            'version': '0.0.0',
-            'name': self.name,
-            'description': "A CBR plugin",
-            'author': None,
-            'link': None,
-            'dependencies': None
+            "id": self.name,
+            "version": "0.0.0",
+            "name": self.name,
+            "description": "A CBR plugin",
+            "author": None,
+            "link": None,
+            "dependencies": None
         }
         if data is not None:
             return metadata[data]
@@ -90,7 +90,7 @@ class Plugin:
 
 
 class PluginManager:
-    def __init__(self, server: 'CBRTCPServer', logger: CBRLogger):
+    def __init__(self, server: "CBRTCPServer", logger: CBRLogger):
         self.server = server
         self.logger = logger
         self.event_manager = PluginEventManager(server, logger)
@@ -99,18 +99,18 @@ class PluginManager:
 
     @staticmethod
     async def __get_plugin_path_list():
-        plugins = ['./cbr/plugin/default_plugin.py']
-        for entry in os.scandir('./plugins'):
+        plugins = ["./cbr/plugin/default_plugin.py"]
+        for entry in os.scandir("./plugins"):
             entry: os.DirEntry
-            if entry.is_file() and entry.name.endswith('.py'):
+            if entry.is_file() and entry.name.endswith(".py"):
                 plugins.append(entry.path)
         return plugins
 
     async def reload_all_plugins(self):
-        self.logger.debug("Start reload plugins", module='plugin')
+        self.logger.debug("Start reload plugins", module="plugin")
         await self.unload_all_plugins()
         await self.load_all_plugins()
-        self.logger.debug("Finish reload plugins", module='plugin')
+        self.logger.debug("Finish reload plugins", module="plugin")
 
     async def get_loaded_plugins(self):
         plugins = []
@@ -130,17 +130,17 @@ class PluginManager:
     @staticmethod
     async def get_disable_plugins():
         plugins = []
-        for entry in os.scandir('./plugins'):
+        for entry in os.scandir("./plugins"):
             entry: os.DirEntry
-            if entry.is_file() and entry.name.endswith('.disable'):
+            if entry.is_file() and entry.name.endswith(".disable"):
                 plugins.append(entry.name)
         return plugins
 
     async def load_plugin(self, plugin_file_name):
-        plugin_file_path = './plugins/' + plugin_file_name
+        plugin_file_path = "./plugins/" + plugin_file_name
         if not os.path.exists(plugin_file_path):
             return f"Fail to load {plugin_file_name}, file not find"
-        elif not plugin_file_name.endswith('.py') or not os.path.isfile(plugin_file_path):
+        elif not plugin_file_name.endswith(".py") or not os.path.isfile(plugin_file_path):
             return f"Fail to load {plugin_file_name}, invalid file"
         else:
             if await self.__load_plugin(plugin_file_path, plugin_file_name):
@@ -154,7 +154,7 @@ class PluginManager:
         if plugin_file_name in self.plugin_dir:
             plugin: Plugin = self.plugins[self.plugin_dir[plugin_file_name]]
             if plugin.check_change():
-                await self.plugin_run_event('on_unload', plugin.id)
+                await self.plugin_run_event("on_unload", plugin.id)
                 self.server.deregister_help_msg(plugin.id)
                 self.logger.info(f"Reload plugin {plugin.id}@{plugin.version}")
                 try:
@@ -162,7 +162,7 @@ class PluginManager:
                 except Exception:
                     self.logger.info(f"Fail to Load plugin {plugin_file_name}")
                     return False
-                await self.plugin_run_event('on_load', plugin.id)
+                await self.plugin_run_event("on_load", plugin.id)
                 return True
             else:
                 return None
@@ -171,13 +171,13 @@ class PluginManager:
                 plugin = Plugin(self.logger, plugin_path, plugin_file_name[:-3])
                 plugin.reload()
                 if plugin.id in self.plugins.keys():
-                    self.logger.error(f'Fail to load plugin: {plugin_file_name}, duplicate id: "{plugin.id}"')
+                    self.logger.error(f"Fail to load plugin: {plugin_file_name}, duplicate id: '{plugin.id}'")
                     return False
                 self.logger.info(f"Load plugin {plugin.id}@{plugin.version}")
                 self.plugin_dir.update({plugin_file_name: plugin.id})
                 self.event_manager.register_plugin(plugin)
                 self.plugins[plugin.id] = plugin
-                await self.plugin_run_event('on_load', plugin.id)
+                await self.plugin_run_event("on_load", plugin.id)
                 return True
             except Exception:
                 self.logger.info(f"Fail to Load plugin {plugin_file_name}")
@@ -185,21 +185,21 @@ class PluginManager:
 
     async def unload_plugin(self, plugin_id, nursery=None):
         if plugin_id in self.plugins.keys():
-            plugin_file_name = ''
+            plugin_file_name = ""
             for i in self.plugin_dir.keys():
                 if self.plugin_dir[i] == plugin_id:
                     plugin_file_name = i
-            await self.plugin_run_event('on_unload', plugin_id, nursery=nursery)
+            await self.plugin_run_event("on_unload", plugin_id, nursery=nursery)
             await self.__remove_plugin(plugin_file_name, plugin_id)
             return True
         else:
             return False
 
     async def enable_plugin(self, plugin_file_name):
-        plugin_file_path = './plugins/' + plugin_file_name
+        plugin_file_path = "./plugins/" + plugin_file_name
         if not os.path.exists(plugin_file_path):
             return f"Fail to enable {plugin_file_name}, file not find"
-        elif not plugin_file_name.endswith('.py.disable') or not os.path.isfile(plugin_file_path):
+        elif not plugin_file_name.endswith(".py.disable") or not os.path.isfile(plugin_file_path):
             return f"Fail to enable {plugin_file_name}, invalid file"
         else:
             os.rename(plugin_file_path, plugin_file_path[:-8])
@@ -228,20 +228,20 @@ class PluginManager:
             return False
 
     async def load_all_plugins(self):
-        self.logger.debug("Start load plugins", module='plugin')
+        self.logger.debug("Start load plugins", module="plugin")
         plugins = await self.__get_plugin_path_list()
         for i in plugins:
             await self.__load_plugin(i, os.path.basename(i))
-        self.logger.debug("Finish load plugins", module='plugin')
+        self.logger.debug("Finish load plugins", module="plugin")
 
     async def unload_all_plugins(self):
-        self.logger.debug("Start unload plugins", module='plugin')
+        self.logger.debug("Start unload plugins", module="plugin")
         self.event_manager.unloading = True
         async with trio.open_nursery() as nursery:
             for i in self.plugin_dir.values():
                 nursery.start_soon(self.unload_plugin, i, nursery)
         self.event_manager.unloading = False
-        self.logger.debug("Finish unload plugins", module='plugin')
+        self.logger.debug("Finish unload plugins", module="plugin")
 
     async def check_reload_all_plugins(self):
         cache_plugin = list(self.plugin_dir.keys())

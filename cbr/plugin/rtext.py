@@ -29,19 +29,19 @@ class RTextBase:
 	def to_plain_text(self) -> str:
 		raise NotImplementedError()
 
-	def copy(self) -> 'RTextBase':
+	def copy(self) -> "RTextBase":
 		raise NotImplementedError()
 
-	def set_click_event(self, action: RAction, value: str) -> 'RTextBase':
+	def set_click_event(self, action: RAction, value: str) -> "RTextBase":
 		raise NotImplementedError()
 
-	def set_hover_text(self, *args) -> 'RTextBase':
+	def set_hover_text(self, *args) -> "RTextBase":
 		raise NotImplementedError()
 
-	def c(self, action: RAction, value: str) -> 'RTextBase':
+	def c(self, action: RAction, value: str) -> "RTextBase":
 		return self.set_click_event(action, value)
 
-	def h(self, *args) -> 'RTextBase':
+	def h(self, *args) -> "RTextBase":
 		return self.set_hover_text(*args)
 
 	def __str__(self):
@@ -54,17 +54,17 @@ class RTextBase:
 		return RTextList(other, self)
 
 	@staticmethod
-	def from_any(text) -> 'RTextBase':
+	def from_any(text) -> "RTextBase":
 		"""
-		:param text: can be a RTextBase, or a str, or anything
-		:rtype: RTextBase
+		param text: can be a RTextBase, or a str, or anything
+		rtype: RTextBase
 		"""
 		if isinstance(text, RTextBase):
 			return text
 		return RText(text)
 
 	@staticmethod
-	def join(divider: Any, iterable: Iterable[Any]) -> 'RTextBase':
+	def join(divider: Any, iterable: Iterable[Any]) -> "RTextBase":
 		result = RTextList()
 		for i, item in enumerate(iterable):
 			if i > 0:
@@ -73,7 +73,7 @@ class RTextBase:
 		return result
 
 	@staticmethod
-	def format(fmt: str, *args, **kwargs) -> 'RTextBase':
+	def format(fmt: str, *args, **kwargs) -> "RTextBase":
 		args = list(args)
 		kwargs = kwargs.copy()
 		counter = 0
@@ -81,7 +81,7 @@ class RTextBase:
 
 		def get():
 			nonlocal counter
-			rv = '@@MCDR#RText.format#Placeholder#{}@@'.format(counter)
+			rv = "@@MCDR#RText.format#Placeholder#{}@@".format(counter)
 			counter += 1
 			return rv
 
@@ -124,7 +124,7 @@ class RText(RTextBase):
 		self.__click_event: Optional[_ClickEvent] = None
 		self.__hover_text_list: list = []
 
-	def _copy_from(self, text: 'RText'):
+	def _copy_from(self, text: "RText"):
 		self.__text = text.__text
 		self.__click_event = text.__click_event
 		self.__hover_text_list = text.__hover_text_list.copy()
@@ -138,18 +138,18 @@ class RText(RTextBase):
 		return self
 
 	def to_json_object(self) -> Union[dict, list]:
-		obj = {'text': self.__text}
+		obj = {"text": self.__text}
 		if self.__click_event is not None:
-			obj['clickEvent'] = {
-				'action': self.__click_event.action.name,
-				'value': self.__click_event.value
+			obj["clickEvent"] = {
+				"action": self.__click_event.action.name,
+				"value": self.__click_event.value
 			}
 		if len(self.__hover_text_list) > 0:
-			obj['hoverEvent'] = {
-				'action': 'show_text',
-				'value': {
-					'text': '',
-					'extra': RTextList(*self.__hover_text_list).to_json_object(),
+			obj["hoverEvent"] = {
+				"action": "show_text",
+				"value": {
+					"text": "",
+					"extra": RTextList(*self.__hover_text_list).to_json_object(),
 				}
 			}
 		return obj
@@ -157,15 +157,15 @@ class RText(RTextBase):
 	def to_plain_text(self) -> str:
 		return self.__text
 
-	def copy(self) -> 'RText':
-		copied = RText('')
+	def copy(self) -> "RText":
+		copied = RText("")
 		copied._copy_from(self)
 		return copied
 
 
 class RTextList(RTextBase):
 	def __init__(self, *args):
-		self.header = RText('')
+		self.header = RText("")
 		self.header_empty = True
 		self.children = []  # type: List[RTextBase]
 		self.append(*args)
@@ -180,7 +180,7 @@ class RTextList(RTextBase):
 		self.header_empty = False
 		return self
 
-	def append(self, *args) -> 'RTextList':
+	def append(self, *args) -> "RTextList":
 		for obj in args:
 			if isinstance(obj, RTextList):
 				self.children.extend(obj.children)
@@ -194,17 +194,17 @@ class RTextList(RTextBase):
 		return len(self.children) == 0
 
 	def to_json_object(self) -> Union[dict, list]:
-		ret = ['' if self.header_empty else self.header.to_json_object()]
+		ret = ["" if self.header_empty else self.header.to_json_object()]
 		ret.extend(map(lambda rtext: rtext.to_json_object(), self.children))
 		return ret
 
 	def to_plain_text(self) -> str:
-		return ''.join(map(lambda rtext: rtext.to_plain_text(), self.children))
+		return "".join(map(lambda rtext: rtext.to_plain_text(), self.children))
 
 	def to_colored_text(self) -> str:
-		return ''.join(map(lambda rtext: rtext.to_colored_text(), self.children))
+		return "".join(map(lambda rtext: rtext.to_colored_text(), self.children))
 
-	def copy(self) -> 'RTextList':
+	def copy(self) -> "RTextList":
 		copied = RTextList()
 		copied.header = self.header.copy()
 		copied.header_empty = self.header_empty

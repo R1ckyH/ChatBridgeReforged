@@ -19,7 +19,7 @@ class CBRInterfaceLogger:
     """
         simple logger for server_interface, recommend to use this logger instead of CBRLogger
     """
-    def __init__(self, logger: 'CBRLogger', token: trio.lowlevel.TrioToken):
+    def __init__(self, logger: "CBRLogger", token: trio.lowlevel.TrioToken):
         self.__logger = logger
         self.__token = token
         self.__formatter = formatter
@@ -46,10 +46,10 @@ class CBRInterfaceLogger:
 
 
 class CBRInterface:
-    def __init__(self, server: 'CBRTCPServer', token: trio.lowlevel.TrioToken, plugin_id):
+    def __init__(self, server: "CBRTCPServer", token: trio.lowlevel.TrioToken, plugin_id):
         self._server = server
         self.__token = token
-        self.cbr_logger: 'CBRLogger' = server.logger
+        self.cbr_logger: "CBRLogger" = server.logger
         self.logger = CBRInterfaceLogger(self.cbr_logger, token)
         self.__result_cache = None
         self.__current_plugin_id = plugin_id
@@ -67,7 +67,7 @@ class CBRInterface:
         """
             Check clients register for type `mc` or not
         """
-        if self.__exist(client) and self._server.clients[client].type == 'mc':
+        if self.__exist(client) and self._server.clients[client].type == "mc":
             return True
         else:
             return False
@@ -104,7 +104,7 @@ class CBRInterface:
 
     def get_client_type(self, client):
         """
-            get type of clients register, if not register return ''
+            get type of clients register, if not register return ""
         """
         if client in self._server.clients.keys():
             return self._server.clients[client].type
@@ -123,7 +123,7 @@ class CBRInterface:
         """
         self.send_custom_message("CBR", target, msg, receiver=receiver)
 
-    def reply(self, info: 'MessageInfo', msg):
+    def reply(self, info: "MessageInfo", msg):
         """
             reply to client or player(if exist)
         """
@@ -131,7 +131,7 @@ class CBRInterface:
         receiver = info.sender
         self.send_custom_message("CBR", target, msg, receiver=receiver)  # TODO: FIX reply of on_player_info
 
-    def send_custom_message(self, self_client, target, msg, source_player='', receiver=''):
+    def send_custom_message(self, self_client, target, msg, source_player="", receiver=""):
         """
             send message to target client with custom information
         """
@@ -250,7 +250,7 @@ class CBRInterface:
             if self.__current_plugin_id == "ChatBridgeReforged":
                 self.logger.chat(i)
             else:
-                self.logger.chat('- ' + i)
+                self.logger.chat("- " + i)
 
     async def __wait_api_result(self, target, plugin_id, function_name, keys):
         with trio.move_on_after(2) as self._server.clients[target].cmd_lock:
