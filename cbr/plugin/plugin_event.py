@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class PluginEvent:
-    def __init__(self, server: 'CBRTCPServer', event, logger: CBRLogger):
+    def __init__(self, server: "CBRTCPServer", event, logger: CBRLogger):
         self.event = event
         self.logger = logger
         self.server = server
@@ -23,10 +23,10 @@ class PluginEvent:
     def register_all_plugins(self, plugin_dict):
         self.register_event_plugins = {}
         for i in plugin_dict:
-            plugin: 'Plugin' = plugin_dict[i]
+            plugin: "Plugin" = plugin_dict[i]
             self.register_plugin(plugin)
 
-    def register_plugin(self, plugin: 'Plugin'):
+    def register_plugin(self, plugin: "Plugin"):
         if hasattr(plugin.instance, self.event):
             self.register_event_plugins.update({plugin.id: plugin})
             self.logger.debug(f"Plugin {plugin.id} register to event {self.event}", "plugin")
@@ -37,16 +37,16 @@ class PluginEvent:
             self.logger.debug(f"Plugin '{plugin_id}' removed in event '{self.event}'", "plugin")
 
     async def plugins_run_event(self, wait_time, nursery, *args):
-        self.logger.debug(f"Start '{self.event}'", module='plugin')
+        self.logger.debug(f"Start '{self.event}'", module="plugin")
         async with trio.open_nursery() as nursery2:
             for i in self.register_event_plugins:
-                plugin: 'Plugin' = self.register_event_plugins[i]
+                plugin: "Plugin" = self.register_event_plugins[i]
                 run = getattr(plugin.instance, self.event)
                 nursery2.start_soon(self.wait_run, plugin.id, run, nursery, wait_time, *args)
-        self.logger.debug(f"Finish event '{self.event}'", module='plugin')
+        self.logger.debug(f"Finish event '{self.event}'", module="plugin")
 
     async def wait_run(self, plugin_id, run, nursery, wait_time=1, *args):
-        self.logger.debug(f"Start '{self.event}' of {plugin_id}", module='plugin')
+        self.logger.debug(f"Start '{self.event}' of {plugin_id}", module="plugin")
         server_interface = CBRInterface(self.server, self.server.token, plugin_id)
         if wait_time == -1:
             cancel_scope = trio.CancelScope()
@@ -55,7 +55,7 @@ class PluginEvent:
         with cancel_scope:
             nursery.start_soon(trio.to_thread.run_sync, self.__run, run, cancel_scope, server_interface, *args)
             await trio.sleep_forever()
-        self.logger.debug(f"Finish '{self.event}' of {plugin_id}", module='plugin')
+        self.logger.debug(f"Finish '{self.event}' of {plugin_id}", module="plugin")
 
     def __run(self, run_plugin, cancel_scope: trio.CancelScope, server_interface: CBRInterface, *args):
         try:
@@ -66,7 +66,7 @@ class PluginEvent:
 
 
 class PluginEventManager:
-    def __init__(self, server: 'CBRTCPServer', logger: CBRLogger):
+    def __init__(self, server: "CBRTCPServer", logger: CBRLogger):
         self.server = server
         self.events = {}
         self.logger = logger
@@ -90,7 +90,7 @@ class PluginEventManager:
             event: PluginEvent = self.events[i]
             event.register_all_plugins(plugin_dict)
 
-    def register_plugin(self, plugin: 'Plugin'):
+    def register_plugin(self, plugin: "Plugin"):
         for i in self.events:
             event: PluginEvent = self.events[i]
             event.register_plugin(plugin)
@@ -103,7 +103,7 @@ class PluginEventManager:
         if event not in self.events:
             self.logger.error(f"Event '{event}' haven't been register")
             return
-        if self.unloading and event != 'on_unload':
+        if self.unloading and event != "on_unload":
             self.logger.warning(f"Plugin unloading, event '{event}' skipped")
             return
         await self.events[event].plugins_run_event(wait_time, nursery, *args)
@@ -112,10 +112,10 @@ class PluginEventManager:
         if event not in self.events:
             self.logger.error(f"Event '{event}' haven't been register")
             return
-        if self.unloading and event != 'on_unload':
+        if self.unloading and event != "on_unload":
             self.logger.warning(f"Plugin unloading, event '{event}' skipped")
             return
         if plugin_id in self.events[event].register_event_plugins.keys():
-            plugin: 'Plugin' = self.events[event].register_event_plugins[plugin_id]
+            plugin: "Plugin" = self.events[event].register_event_plugins[plugin_id]
             run = getattr(plugin.instance, event)
             await self.events[event].wait_run(plugin_id, run, nursery, wait_time=wait_time, *args)

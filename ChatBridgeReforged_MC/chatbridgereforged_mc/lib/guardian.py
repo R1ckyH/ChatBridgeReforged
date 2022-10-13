@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class GuardianBase:
-    def __init__(self, logger: 'CBRLogger', name=''):
+    def __init__(self, logger: "CBRLogger", name=""):
         self.logger = logger
         self.reset = False
         self.end = False
@@ -50,7 +50,7 @@ class GuardianBase:
 
 
 class PingGuardian(GuardianBase):
-    def __init__(self, client_class: 'CBRTCPClient', logger, config: 'Config'):
+    def __init__(self, client_class: "CBRTCPClient", logger, config: "Config"):
         super().__init__(logger, "ping")
         self.client = client_class
         self.config = config
@@ -67,7 +67,7 @@ class PingGuardian(GuardianBase):
 
 
 class RestartGuardian(GuardianBase):
-    def __init__(self, logger, client_class: 'CBRTCPClient'):
+    def __init__(self, logger, client_class: "CBRTCPClient"):
         super().__init__(logger, "CBR_client")
         self.client = client_class
         self.wait_time = 0

@@ -9,7 +9,7 @@ def info_formatter(client, player, msg):
     return message
 
 
-def message_formatter(client, player, msg, receiver=''):
+def message_formatter(client, player, msg, receiver=""):
     message = {
         "action": "message",
         "client": client,
@@ -77,6 +77,6 @@ def api_formatter(receiver, plugin_id, function_name, keys: dict):
 
 def no_color_formatter(msg):
     for i in range(6):
-        msg = msg.replace('§' + str(i), '').replace('§' + chr(97 + i), '')
-    msg = msg.replace('§6', '').replace('§7', '').replace('§8', '').replace('§9', '').replace('§r', '')
+        msg = msg.replace("§" + str(i), "").replace("§" + chr(97 + i), "")
+    msg = msg.replace("§6", "").replace("§7", "").replace("§8", "").replace("§9", "").replace("§r", "")
     return msg

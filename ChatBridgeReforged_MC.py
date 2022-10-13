@@ -23,35 +23,35 @@ except ModuleNotFoundError:
     from mcdreforged.api.all import *
     new_mcdr = True
 
-PREFIX = '!!CBR'
-PREFIX2 = '!!cbr'
+PREFIX = "!!CBR"
+PREFIX2 = "!!cbr"
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
-client: 'CBRTCPClient'
+client: "CBRTCPClient"
 
 debug_mode = False
-CONFIG_PATH = 'config/ChatBridgeReforged_MC.json'
-LOG_PATH = 'logs/ChatBridgeReforged_MC.log'
-CHAT_PATH = 'logs/ChatBridgeReforged_MC_chat.log'
+CONFIG_PATH = "config/ChatBridgeReforged_MC.json"
+LOG_PATH = "logs/ChatBridgeReforged_MC.log"
+CHAT_PATH = "logs/ChatBridgeReforged_MC_chat.log"
 SIZE_TO_ZIP = 512  # kb
 SIZE_TO_ZIP_CHAT = 512  # kb
 DISABLE_CHAT_LOG = True
 SPLIT_CHAT_LOG = False
 auto_restart = True  # not recommend to change
-client_color = '6'  # minecraft color code
+client_color = "6"  # minecraft color code
 ping_time = 60
 timeout = 120
 wait_time = [5, 10, 30, 60, 120, 300, 600, 1200, 1800, 3600]
 
 PLUGIN_METADATA = {
-    'id': 'chatbridgereforged_mc',
-    'version': '0.2.5-dev030',
-    'name': 'ChatBridgeReforged_MC',
-    'description': 'Reforged of ChatBridge, Client for normal mc server.',
-    'author': 'ricky',
-    'link': 'https://github.com/R1ckyH/ChatBridgeReforged',
-    'dependencies': {
-        'mcdreforged': '>=1.3.0'  # or ~=0.9
+    "id": "chatbridgereforged_mc",
+    "version": "0.2.5-dev030",
+    "name": "ChatBridgeReforged_MC",
+    "description": "Reforged of ChatBridge, Client for normal mc server.",
+    "author": "ricky",
+    "link": "https://github.com/R1ckyH/ChatBridgeReforged",
+    "dependencies": {
+        "mcdreforged": ">=1.3.0"  # or ~=0.9
     }
 }
 
@@ -71,8 +71,8 @@ def rtext_cmd(txt, msg, cmd):
 def help_formatter(mcdr_prefix, command, first_msg, click_msg, use_command=None):
     if use_command is None:
         use_command = command
-    msg = f'{mcdr_prefix} {command} §a{first_msg}'
-    return rtext_cmd(msg, f'Click me to {click_msg}', f'{mcdr_prefix} {use_command}')
+    msg = f"{mcdr_prefix} {command} §a{first_msg}"
+    return rtext_cmd(msg, f"Click me to {click_msg}", f"{mcdr_prefix} {use_command}")
 
 
 def message_formatter(client_name, player, msg):
@@ -123,22 +123,22 @@ def stop_formatter():
     return json.dumps(message)
 
 
-help_msg = '''§b-----------§fChatBridgeReforged_Client§b-----------§r
-''' + help_formatter(PREFIX, 'help', 'show help message§r', 'show help message') + '''
-''' + help_formatter(PREFIX, 'start', 'start ChatBridgeReforged client§r', 'start') + '''
-''' + help_formatter(PREFIX, 'stop', 'stop ChatBridgeReforged client§r', 'stop') + '''
-''' + help_formatter(PREFIX, 'status', 'show status of ChatBridgeReforged client§r', 'show status') + '''
-''' + help_formatter(PREFIX, 'reload', 'reload ChatBridgeReforged client§r', 'reload') + '''
-''' + help_formatter(PREFIX, 'restart', 'restart ChatBridgeReforged client§r', 'restart') + '''
-''' + help_formatter(PREFIX, 'ping', 'ping ChatBridgeReforged server§r', 'ping') + '''
-§b-----------------------------------------------§r'''
+help_msg = """§b-----------§fChatBridgeReforged_Client§b-----------§r
+""" + help_formatter(PREFIX, "help", "show help message§r", "show help message") + """
+""" + help_formatter(PREFIX, "start", "start ChatBridgeReforged client§r", "start") + """
+""" + help_formatter(PREFIX, "stop", "stop ChatBridgeReforged client§r", "stop") + """
+""" + help_formatter(PREFIX, "status", "show status of ChatBridgeReforged client§r", "show status") + """
+""" + help_formatter(PREFIX, "reload", "reload ChatBridgeReforged client§r", "reload") + """
+""" + help_formatter(PREFIX, "restart", "restart ChatBridgeReforged client§r", "restart") + """
+""" + help_formatter(PREFIX, "ping", "ping ChatBridgeReforged server§r", "ping") + """
+§b-----------------------------------------------§r"""
 
 
 class CBRLogger:
     def __init__(self):
         self._debug_mode = False
-        self.log_path = ''
-        self.chat_path = ''
+        self.log_path = ""
+        self.chat_path = ""
         self.client = None
 
     def load(self, client_class=None):
@@ -165,43 +165,43 @@ class CBRLogger:
 
     def out_log(self, msg: str, error=False, debug=False, not_spam=False, chat=False):
         msg = re.sub("§.", "", str(msg))
-        heading = '[CBR] ' + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
+        heading = "[CBR] " + datetime.now().strftime("[%Y-%m-%d %H:%M:%S] ")
         if chat:
-            msg = heading + '[CHAT]: ' + msg
+            msg = heading + "[CHAT]: " + msg
             if SPLIT_CHAT_LOG:
-                if self.chat_path != '':
-                    print(msg + '\n', end='')
-                    with open(self.chat_path, 'a+', encoding='utf-8') as log:
-                        log.write(msg + '\n')
+                if self.chat_path != "":
+                    print(msg + "\n", end="")
+                    with open(self.chat_path, "a+", encoding="utf-8") as log:
+                        log.write(msg + "\n")
                 return
         elif error:
-            msg = heading + '[ERROR]: ' + msg
+            msg = heading + "[ERROR]: " + msg
         elif debug:
             if not self._debug_mode:
                 return
-            msg = heading + '[DEBUG]: ' + msg
+            msg = heading + "[DEBUG]: " + msg
         else:
-            msg = heading + '[INFO]: ' + msg
+            msg = heading + "[INFO]: " + msg
         if not not_spam:
-            print(msg + '\n', end='')
-            if self.log_path != '':
-                with open(self.log_path, 'a+', encoding='utf-8') as log:
-                    log.write(msg + '\n')
+            print(msg + "\n", end="")
+            if self.log_path != "":
+                with open(self.log_path, "a+", encoding="utf-8") as log:
+                    log.write(msg + "\n")
 
     def bug_log(self, error=False):
-        self.error('bug exist')
+        self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:
                 self.error(line)
             else:
                 self.debug(line)
 
-    def print_msg(self, msg, num, info=None, server: 'ServerInterface' = None, player='', error=False, debug=False,
+    def print_msg(self, msg, num, info=None, server: "ServerInterface" = None, player="", error=False, debug=False,
                   not_spam=False, chat=False):
         if num == 0:
             if self.client.server is not None:
                 if server is not None:
-                    if player == '':
+                    if player == "":
                         server.say(msg)
                     else:
                         server.tell(player, msg)
@@ -219,36 +219,36 @@ class CBRLogger:
 
     def force_debug(self, info=None, server=None):
         self._debug_mode = not self._debug_mode
-        self.print_msg(f'force debug: {self._debug_mode}', 2, info, server=server)
+        self.print_msg(f"force debug: {self._debug_mode}", 2, info, server=server)
 
 
 class Config:
     def __init__(self, logger: CBRLogger, server=None):
         self.logger = logger
-        self.server: 'PluginServerInterface' = server
-        self.name = DEFAULT_CONFIG['name']
-        self.password = DEFAULT_CONFIG['password']
-        self.host_name = DEFAULT_CONFIG['host_name']
-        self.host_port = DEFAULT_CONFIG['host_port']
-        self.aes_key = DEFAULT_CONFIG['aes_key']
+        self.server: "PluginServerInterface" = server
+        self.name = DEFAULT_CONFIG["name"]
+        self.password = DEFAULT_CONFIG["password"]
+        self.host_name = DEFAULT_CONFIG["host_name"]
+        self.host_port = DEFAULT_CONFIG["host_port"]
+        self.aes_key = DEFAULT_CONFIG["aes_key"]
 
     def check_log_file(self):
         if not os.path.exists(LOG_PATH):
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-            self.logger.error('Log file not find')
-            self.logger.info('Generate new log file')
+            self.logger.error("Log file not find")
+            self.logger.info("Generate new log file")
 
     def load_config(self):
         sync = False
         self.check_log_file()
         if not os.path.exists(CONFIG_PATH):
             os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-            self.logger.error('Config not find')
-            self.logger.info('Generate default config')
-            with open(CONFIG_PATH, 'w', encoding='utf-8') as config_file:
+            self.logger.error("Config not find")
+            self.logger.info("Generate default config")
+            with open(CONFIG_PATH, "w", encoding="utf-8") as config_file:
                 json.dump(DEFAULT_CONFIG, config_file, indent=4)
             return DEFAULT_CONFIG
-        with open(CONFIG_PATH, 'r', encoding='utf-8') as config_file:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
             data = dict(json.load(config_file))
         for keys in DEFAULT_CONFIG.keys():
             if keys not in data.keys():
@@ -256,24 +256,24 @@ class Config:
                 data.update({keys: DEFAULT_CONFIG[keys]})
                 sync = True
         if sync:
-            with open(CONFIG_PATH, 'w', encoding='utf-8') as config_file:
+            with open(CONFIG_PATH, "w", encoding="utf-8") as config_file:
                 json.dump(data, config_file, indent=4)
         return data
 
     def init_config(self):
         config_dict = self.load_config()
-        self.name = config_dict['name']
-        self.password = config_dict['password']
-        self.host_name = config_dict['host_name']
-        self.host_port = config_dict['host_port']
-        self.aes_key = config_dict['aes_key']
+        self.name = config_dict["name"]
+        self.password = config_dict["password"]
+        self.host_name = config_dict["host_name"]
+        self.host_port = config_dict["host_port"]
+        self.aes_key = config_dict["aes_key"]
 
     def init_all_config(self):
         self.init_config()
 
 
 class Compressor:
-    def __init__(self, logger: 'CBRLogger'):
+    def __init__(self, logger: "CBRLogger"):
         self.logger = logger
 
     def zip_log(self, file_path, max_size):
@@ -282,11 +282,11 @@ class Compressor:
             file_size = (os.path.getsize(file_path) / 1024)
             if file_size > max_size:
                 if file_path == CHAT_PATH:
-                    zip_name = 'logs/CBR_chat'
+                    zip_name = "logs/CBR_chat"
                 else:
-                    zip_name = 'logs/CBR_'
-                zip_name += time.strftime('%Y-%m-%d_%H%M%S', time.localtime(os.path.getmtime(file_path))) + '.zip'
-                with zipfile.ZipFile(zip_name, 'w') as zipper:
+                    zip_name = "logs/CBR_"
+                zip_name += time.strftime("%Y-%m-%d_%H%M%S", time.localtime(os.path.getmtime(file_path))) + ".zip"
+                with zipfile.ZipFile(zip_name, "w") as zipper:
                     zipper.write(file_path, arcname=os.path.basename(file_path), compress_type=zipfile.ZIP_DEFLATED)
                     os.remove(file_path)
                 self.logger.debug("zipped old file")
@@ -303,8 +303,8 @@ class AESCryptor:
     [ChatBridge](https://github.com/TISUnion/ChatBridge) Sorry for late full credit
     """
 
-    def __init__(self, key: str, logger: 'CBRLogger', mode=AES.MODE_CBC):
-        self.__no_encrypt = key == ''
+    def __init__(self, key: str, logger: "CBRLogger", mode=AES.MODE_CBC):
+        self.__no_encrypt = key == ""
         self.key = hashlib.sha256(key.encode("utf-8")).digest()[:16]
         self.logger = logger
         self.mode = mode
@@ -331,23 +331,23 @@ class AESCryptor:
         try:
             result = unpad(self.get_cryptor().decrypt(text), 16)
         except Exception as err:
-            self.logger.error('TypeError when decrypting text')
-            self.logger.error('Text =' + str(text))
-            self.logger.error('Len(text) =' + str(len(text)))
+            self.logger.error("TypeError when decrypting text")
+            self.logger.error("Text =" + str(text))
+            self.logger.error("Len(text) =" + str(len(text)))
             self.logger.error(str(err.args))
             raise err
         try:
-            result = str(result, encoding='utf-8')
+            result = str(result, encoding="utf-8")
         except UnicodeDecodeError:
-            self.logger.error('Error at decrypt string conversion')
-            self.logger.error('Raw result = ' + str(result))
-            result = str(result, encoding='ISO-8859-1')
-            self.logger.error('ISO-8859-1 = ' + str(result))
+            self.logger.error("Error at decrypt string conversion")
+            self.logger.error("Raw result = " + str(result))
+            result = str(result, encoding="ISO-8859-1")
+            self.logger.error("ISO-8859-1 = " + str(result))
         return result
 
 
 class ClientProcess:
-    def __init__(self, client_class: 'CBRTCPClient'):
+    def __init__(self, client_class: "CBRTCPClient"):
         self.client = client_class
         self.logger = client_class.logger
         self.end = 0
@@ -355,13 +355,13 @@ class ClientProcess:
     def ping_test(self):
         if not self.client.connected:
             return -2
-        self.logger.debug(f'Ping to server')
+        self.logger.debug(f"Ping to server")
         start_time = time.time()
-        self.client.send_ping(self.client.socket, target='server')
+        self.client.send_ping(self.client.socket, target="server")
         self.ping_result()
-        self.logger.debug(f'get ping result from server')
+        self.logger.debug(f"get ping result from server")
         if self.end == -1:
-            self.logger.debug(f'No response from server')
+            self.logger.debug(f"No response from server")
             return -1
         return round((self.end - start_time) * 1000, 1)
 
@@ -376,79 +376,79 @@ class ClientProcess:
 
     def ping_log(self, ping_ms, info=None, server=None):
         if ping_ms == -2:
-            self.logger.print_msg(f'- Offline', 2, info, server=server)
+            self.logger.print_msg(f"- Offline", 2, info, server=server)
         elif ping_ms == -1:
-            self.logger.print_msg(f'- No response - time = 2000ms', 2, info, server=server)
+            self.logger.print_msg(f"- No response - time = 2000ms", 2, info, server=server)
         else:
-            self.logger.print_msg(f'- Alive - time = {ping_ms}ms', 2, info, server=server)
+            self.logger.print_msg(f"- Alive - time = {ping_ms}ms", 2, info, server=server)
 
-    def input_process(self, message, server: 'ServerInterface' = None, info=None):
-        message = message.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
-        if message == 'help' or message == '':
+    def input_process(self, message, server: "ServerInterface" = None, info=None):
+        message = message.replace(PREFIX + " ", "").replace(PREFIX2 + " ", "").replace(PREFIX, "").replace(PREFIX2, "")
+        if message == "help" or message == "":
             if server is not None and info is not None:
                 server.reply(info, help_msg)
             else:
                 for line in str(help_msg).splitlines():
                     self.client.logger.out_log(line)
-        elif message == 'stop':
+        elif message == "stop":
             self.client.try_stop(info)
-        elif message == 'start':
+        elif message == "start":
             self.client.try_start(info)
-        elif message == 'status':
+        elif message == "status":
             self.client.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
-        elif message == 'ping':
+        elif message == "ping":
             ping = self.ping_test()
             self.ping_log(ping, info, server)
-        elif message == 'reload':
+        elif message == "reload":
             self.client.reload(info)
-        elif message == 'restart':
+        elif message == "restart":
             self.client.try_stop(info)
             time.sleep(0.1)
             self.client.try_start(info)
             time.sleep(0.1)
             self.logger.print_msg(f"CBR status: Online = {self.client.connected}", 2, info, server=server)
-        elif message == 'exit':
+        elif message == "exit":
             exit(0)
-        elif message == 'forcedebug':
+        elif message == "forcedebug":
             if info is None or not info.is_player or server.get_permission_level(info.player) > 2:
                 self.logger.force_debug(info, server)
-        elif message == 'test':
+        elif message == "test":
             self.logger.info("Threads:")
             for thread in threading.enumerate():
                 self.logger.info(f"- {thread.name}")
             self.logger.info(f"Restart Guardian: {self.client.restart_guardian.get_time_left()}s left")
         elif self.client.connected:
-            self.client.send_msg(self.client.socket, msg_json_formatter(self.client.name, '', message))
+            self.client.send_msg(self.client.socket, msg_json_formatter(self.client.name, "", message))
         else:
             self.logger.info("Not Connected")
 
     def process_msg(self, msg, socket: soc.socket):
         if "action" in msg.keys():
-            if msg["action"] == 'result':
-                if msg['result'] == 'login success':
+            if msg["action"] == "result":
+                if msg["result"] == "login success":
                     self.logger.info("Login Success")
                 else:
                     self.logger.error("Login in fail")
-            elif msg["action"] == 'keepAlive':
-                if msg['type'] == 'ping':
+            elif msg["action"] == "keepAlive":
+                if msg["type"] == "ping":
                     self.client.send_ping(socket, True, "server")
-                elif msg['type'] == 'pong':
+                elif msg["type"] == "pong":
                     self.end = time.time()
-            elif msg["action"] == 'message':
+            elif msg["action"] == "message":
                 if self.client.server is not None and not self.client.server.is_server_running():
                     return
-                if msg['message'] is None:
-                    self.logger.info(str(msg['message']))
+                if msg["message"] is None:
+                    self.logger.info(str(msg["message"]))
                     return
                 add_text = ""
                 if msg["client"] != "CBR":
                     add_text = f"§7[§{client_color}{msg['client']}§7]§r "
                 if msg["player"] != "":
                     add_text += f"<{msg['player']}>§r "
-                message = msg['message'].replace("\\n", f"\\n{add_text}")
+                message = msg["message"].replace("\\n", f"\\n{add_text}")
                 receiver = ""
                 if "receiver" in msg.keys():
-                    receiver = msg['receiver']
+                    receiver = msg["receiver"]
                 try:
                     data = json.loads(message)
                     if type(data) == list:
@@ -460,8 +460,8 @@ class ClientProcess:
                 except json.decoder.JSONDecodeError:
                     data = ""
                 if type(data) == str:
-                    for i in msg['message'].splitlines():
-                        message = message_formatter(msg['client'], msg['player'], i)
+                    for i in msg["message"].splitlines():
+                        message = message_formatter(msg["client"], msg["player"], i)
                         self.logger.print_msg(message, 0, player=receiver, server=self.client.server,
                                               not_spam=True, chat=True)
                     return
@@ -470,12 +470,12 @@ class ClientProcess:
                     self.client.server.execute(f"execute run tellraw {receiver} {message}")
                 else:
                     self.client.server.execute(f"execute run tellraw @a {message}")
-            elif msg["action"] == 'stop':
+            elif msg["action"] == "stop":
                 self.client.close_connection()
-                self.logger.info(f'Connection closed from server')
-            elif msg["action"] == 'command':
-                command = msg['command']
-                msg['result']['responded'] = True
+                self.logger.info(f"Connection closed from server")
+            elif msg["action"] == "command":
+                command = msg["command"]
+                msg["result"]["responded"] = True
                 if self.client.server is not None:
                     if command.startswith("!!") and new_mcdr:
                         self.client.server.execute_command(command)
@@ -483,39 +483,39 @@ class ClientProcess:
                     if self.client.server.is_rcon_running():
                         result = self.client.server.rcon_query(command)
                         if result is not None:
-                            msg['result']['type'] = 0
-                            msg['result']['result'] = result
+                            msg["result"]["type"] = 0
+                            msg["result"]["result"] = result
                         else:
-                            msg['result']['type'] = 1
+                            msg["result"]["type"] = 1
                     else:
-                        msg['result']['type'] = 2
+                        msg["result"]["type"] = 2
                 else:
-                    msg['result']['type'] = 2
+                    msg["result"]["type"] = 2
                 self.client.send_msg(socket, json.dumps(msg))
-            elif msg["action"] == 'api':
-                plugin_id = msg['plugin']
-                function = msg['function']
-                keys: list = msg['keys']
-                msg['result']['responded'] = True
+            elif msg["action"] == "api":
+                plugin_id = msg["plugin"]
+                function = msg["function"]
+                keys: list = msg["keys"]
+                msg["result"]["responded"] = True
                 if self.client.server is not None:
                     plugin = self.client.server.get_plugin_instance(plugin_id)
                     if plugin is None:
-                        msg['result']['type'] = 1
+                        msg["result"]["type"] = 1
                     else:
                         if not hasattr(plugin, function):
-                            msg['result']['type'] = 2
+                            msg["result"]["type"] = 2
                         else:
                             try:
                                 func = getattr(plugin, function)
                                 result = func(*keys)
                             except Exception:
-                                msg['result']['type'] = 3
+                                msg["result"]["type"] = 3
                                 self.logger.bug_log(error=True)
                             else:
-                                msg['result']['type'] = 0
-                                msg['result']['result'] = result
+                                msg["result"]["type"] = 0
+                                msg["result"]["result"] = result
                 else:
-                    msg['result']['type'] = 3
+                    msg["result"]["type"] = 3
                 self.client.send_msg(socket, json.dumps(msg))
         else:
             self.logger.error(f"Receive Unresolved message from server")
@@ -524,7 +524,7 @@ class ClientProcess:
 
 
 class NetworkBase(AESCryptor):
-    def __init__(self, key, new_client: 'CBRTCPClient'):
+    def __init__(self, key, new_client: "CBRTCPClient"):
         super().__init__(key, logger=new_client.logger)
         self.client = new_client
 
@@ -532,26 +532,26 @@ class NetworkBase(AESCryptor):
         data = socket.recv(4)
         if len(data) < 4:
             self.logger.error("Data length error")
-            return '{}'
-        length = struct.unpack('I', data)[0]
+            return "{}"
+        length = struct.unpack("I", data)[0]
         msg = socket.recv(length)
         try:
             msg = self.decrypt(msg)
         except Exception:
             self.logger.bug_log(error=True)
-            return '{}'
+            return "{}"
         self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg
 
-    def send_msg(self, socket: soc.socket, msg, target=''):
+    def send_msg(self, socket: soc.socket, msg, target=""):
         if not self.client.connected:
             self.logger.debug("Not connected to the server")
             return
-        if target != '':
-            target = 'to ' + target
+        if target != "":
+            target = "to " + target
         self.logger.debug(f"Send: {msg!r} {target}")
         msg = self.encrypt(msg)
-        msg = struct.pack('I', len(msg)) + msg
+        msg = struct.pack("I", len(msg)) + msg
         try:
             socket.sendall(msg)
         except BrokenPipeError:
@@ -582,10 +582,10 @@ class Network(NetworkBase):
 
 
 class CBRTCPClient(Network):
-    def __init__(self, config: 'Config', logger: CBRLogger, server=None):
+    def __init__(self, config: "Config", logger: CBRLogger, server=None):
         self.config = config
         self.logger = logger
-        self.server: 'ServerInterface' = server
+        self.server: "ServerInterface" = server
         self.socket = None
         self.connected = False
         self.cancelled = False
@@ -612,7 +612,7 @@ class CBRTCPClient(Network):
     def try_start(self, info=None, auto_connect=False):
         if not self.connected and not self.connecting:
             self.connecting = True
-            threading.Thread(target=self.start, name='CBR', args=(info,), daemon=True).start()
+            threading.Thread(target=self.start, name="CBR", args=(info,), daemon=True).start()
         elif not auto_connect:
             if info is not None:
                 self.logger.print_msg("Already Connected to server", 2, info, server=self.server, error=True)
@@ -622,7 +622,7 @@ class CBRTCPClient(Network):
     def start(self, info):
         self.cancelled = False
         self.logger.print_msg(f"Connecting to server '{self.config.host_name}:{self.config.host_port}' with client name {self.name}", 2, info=info, server=self.server)
-        self.logger.info(f'version : {PLUGIN_METADATA["version"]}, lib version : {LIB_VERSION}')
+        self.logger.info(f"version : {PLUGIN_METADATA['version']}, lib version : {LIB_VERSION}")
         self.socket = soc.socket()
         try:
             self.socket.connect((self.config.host_name, self.config.host_port))
@@ -648,7 +648,7 @@ class CBRTCPClient(Network):
             self.connected = False
             self.connecting = False
 
-    def close_connection(self, target=''):
+    def close_connection(self, target=""):
         self.ping_guardian.stop()
         if self.socket is not None and self.connected:
             self.cancelled = True
@@ -689,11 +689,11 @@ class CBRTCPClient(Network):
             try:
                 self.client_process()
             except soc.timeout:
-                self.logger.error('Connection time out!')
-                self.logger.debug('Closed connection to server')
+                self.logger.error("Connection time out!")
+                self.logger.debug("Closed connection to server")
                 break
             except ConnectionAbortedError:
-                self.logger.info('Connection closed')
+                self.logger.info("Connection closed")
                 self.logger.bug_log()
                 break
             except Exception:
@@ -707,14 +707,14 @@ class CBRTCPClient(Network):
         self.ping_guardian.stop()
 
 
-def process_info(server: 'ServerInterface', info: 'Info'):
+def process_info(server: "ServerInterface", info: "Info"):
     msg = info.content
     if msg.startswith(PREFIX) or msg.startswith(PREFIX2):
         if new_mcdr:
             info.cancel_send_to_server()
-        # if msg.endswith('<--[HERE]'):
-        #    msg = msg.replace('<--[HERE]', '')
-        msg = msg.replace(PREFIX + ' ', "").replace(PREFIX2 + ' ', "").replace(PREFIX, "").replace(PREFIX2, "")
+        # if msg.endswith("<--[HERE]"):
+        #    msg = msg.replace("<--[HERE]", "")
+        msg = msg.replace(PREFIX + " ", "").replace(PREFIX2 + " ", "").replace(PREFIX, "").replace(PREFIX2, "")
         client.process.input_process(msg, server, info)
     else:
         if client is None:
@@ -726,7 +726,7 @@ def process_info(server: 'ServerInterface', info: 'Info'):
 
 
 class GuardianBase:
-    def __init__(self, logger: 'CBRLogger', name=''):
+    def __init__(self, logger: "CBRLogger", name=""):
         self.logger = logger
         self.reset = False
         self.end = False
@@ -764,7 +764,7 @@ class GuardianBase:
 
 
 class PingGuardian(GuardianBase):
-    def __init__(self, client_class: 'CBRTCPClient', logger):
+    def __init__(self, client_class: "CBRTCPClient", logger):
         super().__init__(logger, "ping")
         self.client = client_class
 
@@ -779,7 +779,7 @@ class PingGuardian(GuardianBase):
 
 
 class RestartGuardian(GuardianBase):
-    def __init__(self, logger, client_class: 'CBRTCPClient'):
+    def __init__(self, logger, client_class: "CBRTCPClient"):
         super().__init__(logger, "CBR_client")
         self.client = client_class
         self.wait_time = 0
@@ -830,18 +830,18 @@ def main(server=None):
                 client.logger.bug_log()
 
 
-def on_info(server: 'PluginServerInterface', info: 'Info'):
+def on_info(server: "PluginServerInterface", info: "Info"):
     threading.Thread(name="CBR_Process", target=process_info, args=(server, info), daemon=True).start()
 
 
 def on_player_joined(server, name, info=None):
     client.try_start()
-    client.send_msg(client.socket, msg_json_formatter(client.name, '', name + ' joined ' + client.name))
+    client.send_msg(client.socket, msg_json_formatter(client.name, "", name + " joined " + client.name))
 
 
 def on_player_left(server, name, info=None):
     client.try_start()
-    client.send_msg(client.socket, msg_json_formatter(client.name, '', name + ' left ' + client.name))
+    client.send_msg(client.socket, msg_json_formatter(client.name, "", name + " left " + client.name))
 
 
 def on_unload(server):
@@ -864,5 +864,5 @@ def on_load(server, old):
     main(server)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

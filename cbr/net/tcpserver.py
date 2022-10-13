@@ -17,7 +17,7 @@ def rtext_cmd(txt, msg, cmd):
 
 
 class CBRTCPServer(Network):
-    def __init__(self, logger: CBRLogger, config: 'Config'):
+    def __init__(self, logger: CBRLogger, config: "Config"):
         self.logger = logger
         self.config = config
         self.lib_version = self.config.lib_version
@@ -51,7 +51,7 @@ class CBRTCPServer(Network):
             await self.stop()
 
     async def stop(self):
-        self.logger.debug('Server closing', "CBR")
+        self.logger.debug("Server closing", "CBR")
         self.process.cancelled = True
         await self.close_all_connection()
         self.nursery.cancel_scope.cancel()
@@ -63,7 +63,7 @@ class CBRTCPServer(Network):
         client_config = self.config.clients
         client_dict = {}
         for i in client_config:
-            client_dict.update({i['name']: Client(i['name'], i['password'])})
+            client_dict.update({i["name"]: Client(i["name"], i["password"])})
         return client_dict
 
     async def close_all_connection(self):
@@ -77,7 +77,7 @@ class CBRTCPServer(Network):
         try:
             async with trio.open_nursery() as self.nursery:
                 self.nursery.start_soon(self.start_server)
-                self.logger.info(f'The Server is now serving on {self.ip}:{self.port}')
+                self.logger.info(f"The Server is now serving on {self.ip}:{self.port}")
                 await self.plugin_manager.reload_all_plugins()
                 self.nursery.start_soon(partial(trio.to_thread.run_sync, self.input_process, cancellable=True))
         except KeyboardInterrupt:
@@ -92,7 +92,7 @@ class CBRTCPServer(Network):
         except Exception:
             self.logger.bug()
             self.logger.critical("Error in get peer name")
-            address = 'ERROR ADDRESS'
+            address = "ERROR ADDRESS"
         self.logger.debug(f"new session started from {address}", "CBR")
         client_process = ClientProcess(self, self.logger)
         async with trio.open_nursery() as nursery:
@@ -102,7 +102,7 @@ class CBRTCPServer(Network):
                         await self.server_process(stream, client_process, address, nursery)
                 except trio.TooSlowError:
                     if not client_process.cancelled:
-                        self.logger.error('Connection time out!')
+                        self.logger.error("Connection time out!")
                     else:
                         self.logger.debug("Cancel Process", "CBR")
                     break
@@ -117,11 +117,11 @@ class CBRTCPServer(Network):
                     break
                 except Exception:
                     self.logger.bug()
-                    if client_process.current_client != '':
-                        self.logger.info(f'Closed Process to {client_process.current_client}')
+                    if client_process.current_client != "":
+                        self.logger.info(f"Closed Process to {client_process.current_client}")
                     break
             client_process.cancelled = True
-            if client_process.current_client != '':
+            if client_process.current_client != "":
                 self.clients[client_process.current_client].online = False
 
     async def server_process(self, stream: trio.SocketStream, client_process: ClientProcess, address, nursery):
@@ -151,22 +151,22 @@ class CBRTCPServer(Network):
                 self.logger.bug()
 
     def get_register_help_msg(self):
-        msg = ''
+        msg = ""
         for i in self.__register_help_msg:
             if msg != "":
                 msg += "\n"
-            msg += rtext_cmd(f"§7{i['prefix']}", i["plugin_id"], i['prefix']) + f"§f: {i['msg']}"
+            msg += rtext_cmd(f"§7{i['prefix']}", i["plugin_id"], i["prefix"]) + f"§f: {i['msg']}"
         return msg
 
     def add_register_help_msg(self, plugin_id, prefix, msg):
         for i in range(len(self.__register_help_msg)):
-            if self.__register_help_msg[i]['prefix'] == prefix:
+            if self.__register_help_msg[i]["prefix"] == prefix:
                 self.__register_help_msg.pop(i)
                 break
-        self.__register_help_msg.append({'prefix': prefix, 'msg': msg, 'plugin_id': plugin_id})
+        self.__register_help_msg.append({"prefix": prefix, "msg": msg, "plugin_id": plugin_id})
 
     def deregister_help_msg(self, plugin_id):
         for i in range(len(self.__register_help_msg)):
-            if self.__register_help_msg[i]['plugin_id'] == plugin_id:
+            if self.__register_help_msg[i]["plugin_id"] == plugin_id:
                 self.__register_help_msg.pop(i)
                 break
