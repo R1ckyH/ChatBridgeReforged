@@ -68,7 +68,7 @@ class CBRLogger:
                 with open(self.log_path, "a+", encoding="utf-8") as log:
                     log.write(msg + "\n")
 
-    def bug_log(self, error=False):
+    def bug_log(self, error=True):
         self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:

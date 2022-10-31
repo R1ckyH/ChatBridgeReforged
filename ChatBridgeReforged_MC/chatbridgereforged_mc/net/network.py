@@ -25,7 +25,7 @@ class NetworkBase(AESCryptor):
         try:
             msg = self.decrypt(msg)
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             return "{}"
         self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg

@@ -188,7 +188,7 @@ class CBRLogger:
                 with open(self.log_path, "a+", encoding="utf-8") as log:
                     log.write(msg + "\n")
 
-    def bug_log(self, error=False):
+    def bug_log(self, error=True):
         self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:
@@ -510,7 +510,7 @@ class ClientProcess:
                                 result = func(*keys)
                             except Exception:
                                 msg["result"]["type"] = 3
-                                self.logger.bug_log(error=True)
+                                self.logger.bug_log()
                             else:
                                 msg["result"]["type"] = 0
                                 msg["result"]["result"] = result
@@ -538,7 +538,7 @@ class NetworkBase(AESCryptor):
         try:
             msg = self.decrypt(msg)
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             return "{}"
         self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg
@@ -627,7 +627,7 @@ class CBRTCPClient(Network):
         try:
             self.socket.connect((self.config.host_name, self.config.host_port))
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             self.connected = False
             self.connecting = False
             return
@@ -694,12 +694,12 @@ class CBRTCPClient(Network):
                 break
             except ConnectionAbortedError:
                 self.logger.info("Connection closed")
-                self.logger.bug_log()
+                self.logger.bug_log(False)
                 break
             except Exception:
                 self.logger.debug("Cancel Process")
                 if not self.cancelled:
-                    self.logger.bug_log()
+                    self.logger.bug_log(False)
                 break
         self.connected = False
         if auto_restart:
@@ -853,7 +853,7 @@ def on_load(server, old):
         try:
             old.client.try_stop()
         except Exception:
-            old.client.logger.bug_log(error=True)
+            old.client.logger.bug_log()
     if new_mcdr:
         server.register_help_message(PREFIX, "ChatBridgeReforged")
     else:

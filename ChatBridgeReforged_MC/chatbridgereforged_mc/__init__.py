@@ -67,7 +67,7 @@ def on_load(server, old):
         try:
             old.client.try_stop()
         except Exception:
-            old.client.logger.bug_log(error=True)
+            old.client.logger.bug_log()
     server.register_help_message(PREFIX, "ChatBridgeReforged")
     global client
     client = None

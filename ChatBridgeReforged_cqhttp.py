@@ -206,7 +206,7 @@ class CBRLogger:
                 with open(self.log_path, "a+", encoding="utf-8") as log:
                     log.write(msg + "\n")
 
-    def bug_log(self, error=False):
+    def bug_log(self, error=True):
         self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:
@@ -250,7 +250,7 @@ class HeadingLogger:
     def chat(self, msg):
         self.logger.chat(self.__add_msg + str(msg))
 
-    def bug_log(self, error=False):
+    def bug_log(self, error=True):
         self.error("bug exist")
         for line in traceback.format_exc().splitlines():
             if error is True:
@@ -460,7 +460,7 @@ class CQClient(websocket.WebSocketApp):
                 if self.connected:
                     self.send(message)
             except Exception:
-                self.logger.bug_log(error=True)
+                self.logger.bug_log(error=False)
 
     def send_text(self, text, group_id):
         msg = ""
@@ -615,7 +615,7 @@ class NetworkBase(AESCryptor):
         try:
             msg = self.decrypt(msg)
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             return "{}"
         self.logger.debug(f"Received {msg!r} from {address!r}")
         return msg
@@ -691,7 +691,7 @@ class CBRTCPClient(Network):
         try:
             self.socket.connect((self.config.host_name, self.config.host_port))
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             self.connected = False
             self.connecting = False
             return
@@ -746,12 +746,12 @@ class CBRTCPClient(Network):
                 break
             except ConnectionAbortedError:
                 self.logger.info("Connection closed")
-                self.logger.bug_log()
+                self.logger.bug_log(error=False)
                 break
             except Exception:
                 self.logger.debug("Cancel Process")
                 if not self.cancelled:
-                    self.logger.bug_log()
+                    self.logger.bug_log(error=False)
                 break
         self.connected = False
         if auto_restart:
@@ -982,7 +982,7 @@ def main(server=None):
             try:
                 input_process(input_message)
             except Exception:
-                local_logger.bug_log()
+                local_logger.bug_log(error=False)
 
 
 # CBR plugin part
