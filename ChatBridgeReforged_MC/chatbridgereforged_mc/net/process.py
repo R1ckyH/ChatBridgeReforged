@@ -188,7 +188,7 @@ class ClientProcess:
                                 result = func(*keys)
                             except Exception:
                                 msg["result"]["type"] = 3
-                                self.logger.bug_log(error=True)
+                                self.logger.bug_log()
                             else:
                                 msg["result"]["type"] = 0
                                 msg["result"]["result"] = result

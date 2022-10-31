@@ -58,7 +58,7 @@ class CBRTCPClient(Network):
         try:
             self.socket.connect((self.config.host_name, self.config.host_port))
         except Exception:
-            self.logger.bug_log(error=True)
+            self.logger.bug_log()
             self.connected = False
             self.connecting = False
             return
@@ -125,12 +125,12 @@ class CBRTCPClient(Network):
                 break
             except ConnectionAbortedError:
                 self.logger.info("Connection closed")
-                self.logger.bug_log()
+                self.logger.bug_log(False)
                 break
             except Exception:
                 self.logger.debug("Cancel Process")
                 if not self.cancelled:
-                    self.logger.bug_log()
+                    self.logger.bug_log(False)
                 break
         self.connected = False
         if self.config.auto_restart:
