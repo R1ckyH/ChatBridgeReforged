@@ -12,14 +12,14 @@ There is a sample plugin named `not_sample_plugin.py` in the `plugins/` folder, 
 
 When the server has trigger specific event, CBR will call relevant `Function` of each plugin if the plugin has declared the method. CBR will create a separated thread for the called method to run
 
-| Function                                            | When to call                                 | Available | Reference usage                                         |
-|-----------------------------------------------------|----------------------------------------------|-----------|---------------------------------------------------------|
-| on_load(CBRInterface)                               | A plugin gets loaded                         | YES       | The new plugin inherits information from the old plugin |
-| on_unload(CBRInterface)                             | A plugin gets unloaded                       | YES       | Clean up or turn off functionality of the old plugin    |
-| on_message(CBRInterface, MessageInfo)               | A message action have been receive in server | YES       | Response to the message from the clients                |
-| on_command(CBRInterface, MessageInfo)               | A command action have been receive in server | YES       | Response to the command from the server                 |
-| on_player_joined(CBRInterface, player, MessageInfo) | A player joined the server                   | Yes       | Response to player joining with the given info instance |
-| on_player_left(CBRInterface, player, MessageInfo)   | A player left the server                     | Yes       | Response to player leaving                              |
+| Function                                            | When to call                                 | Available | Reference usage                                                |
+|-----------------------------------------------------|----------------------------------------------|-----------|----------------------------------------------------------------|
+| on_load(CBRInterface)                               | A plugin gets loaded                         | YES       | The new plugin inherits information from the old plugin (TODO) |
+| on_unload(CBRInterface)                             | A plugin gets unloaded                       | YES       | Clean up or turn off functionality of the old plugin           |
+| on_message(CBRInterface, MessageInfo)               | A message action have been receive in server | YES       | Response to the message from the clients                       |
+| on_command(CBRInterface, MessageInfo)               | A command action have been receive in server | YES       | Response to the command from the server                        |
+| on_player_joined(CBRInterface, player, MessageInfo) | A player joined the server                   | Yes       | Response to player joining with the given info instance        |
+| on_player_left(CBRInterface, player, MessageInfo)   | A player left the server                     | Yes       | Response to player leaving                                     |
 
 Note: the plugin doesn't need to implement all methods above. **Just implement what you need**
 
@@ -113,13 +113,13 @@ For the following message from the message's standard output：
 
 The attributes of the info object are:
 
-| Attribute     | Value                  |
-|---------------|------------------------|
-| content       | `MCDR QQ : 1101314858` |
-| sender        | ``                     |
-| source_client | `CBR`                  |
-| client_type   | ``                     |
-| is_player()   | False                  |
+| Attribute     | Value                |
+|---------------|----------------------|
+| content       | `CBR QQ : 496983111` |
+| sender        | ``                   |
+| source_client | `CBR`                |
+| client_type   | ``                   |
+| is_player()   | False                |
 
 ------
 
