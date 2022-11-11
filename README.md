@@ -24,6 +24,19 @@ use `##help` to get plugin help command
 
 use `##CBR` to get help command
 
+#### CBR Server setup
+Put all ChatBridgeReforged server files in a directory like
+```
+ChatBridgeReforged
+-cbr
+-ChatBridgeReforged_Server.py
+```
+Start server with run `ChatBridgeReforged_Server.py`
+
+Put `ChatBridgeReforged_MC.py` in MCDR's plugins file
+
+Setup `config.yml` in previous directory and `config/ChatBridgeReforged_MC.json` in MCDR's directory
+
 ## Config
 
 `edit config.yml for config`
