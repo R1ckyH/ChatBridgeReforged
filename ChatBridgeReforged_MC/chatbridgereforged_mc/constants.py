@@ -4,7 +4,7 @@ import sys
 
 PREFIX = "!!CBR"
 PREFIX2 = "!!cbr"
-VERSION = "0.2.6-dev031"
+VERSION = "0.2.7-dev032"
 LIB_VERSION = "v20210915"
 CLIENT_TYPE = "mc"
 
