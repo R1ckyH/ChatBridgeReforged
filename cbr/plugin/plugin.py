@@ -169,7 +169,6 @@ class PluginManager:
         else:
             try:
                 plugin = Plugin(self.logger, plugin_path, plugin_file_name[:-3])
-                plugin.reload()
                 if plugin.id in self.plugins.keys():
                     self.logger.error(f"Fail to load plugin: {plugin_file_name}, duplicate id: '{plugin.id}'")
                     return False
