@@ -9,8 +9,8 @@ from typing import Any, List, Mapping, NoReturn
 from cbr.lib.logger import CBRLogger
 from cbr.lib.typeddicts import TypedConfig, TypedConfigStruct
 
-
 # from ruamel.yaml.comments import CommentedMap
+
 
 DEFAULT_CONFIG_PATH = "cbr/resources/default_config.yml"
 CONFIG_PATH = "config.yml"
@@ -40,11 +40,22 @@ CONFIG_STRUCTURE: List[TypedConfigStruct] = [
 ]
 
 
+class Config:
+    def __init__(self, data: TypedConfig):
+        self.log = data["log"]
+        self.ip = data["server_setting"]["host_name"]
+        self.port = data["server_setting"]["port"]
+        self.aes_key = data["server_setting"]["aes_key"]
+        self.debug = data["debug"]
+        self.clients = data["clients"]
+        self.raw_data = data
+
+
 class ConfigManager:
     def __init__(self, logger: CBRLogger):
         self.logger = logger
 
-    def __gen_config(self) -> NoReturn:
+    def __gen_config(self):
         if not os.path.exists(DEFAULT_CONFIG_PATH):
             self.logger.error("Default config not found, re-installing ChatBridgeReforged may fix the problem")
             exit(1)
@@ -68,14 +79,14 @@ class ConfigManager:
                 flag = self.__check_node(data[name], struct["sub_structure"], f"{prefix}{name}.")
                 check_node_result = check_node_result and flag
                 continue
-            if prefix == "" and name == "clients":
+            if prefix == "" and name == "clients":  # special case handling due to client size are custom by user
                 values = ", ".join([f"'{d['name']}'" for d in data[name]])
                 self.logger.debug(f"Clients are: {values}", "CBR")
             else:
                 self.logger.debug(f"Config '{prefix}{name}' values '{data[name]}'", "CBR")
         return check_node_result
 
-    def __check_config_info(self, data: Mapping[str, Any]):
+    def __check_config_contents(self, data: Mapping[str, Any]):
         self.logger.debug("Start checking config.yml", "CBR")
         if self.__check_node(data, CONFIG_STRUCTURE):
             self.logger.debug("Finished checking config.yml", "CBR")
@@ -83,11 +94,11 @@ class ConfigManager:
             self.logger.error("Some config is missing in config.yml")
             exit(2)
 
-    def read(self) -> TypedConfig:
+    def read(self) -> Config:
         if not os.path.exists(CONFIG_PATH):
             self.logger.warning("Config file is missing, default config generated")
             self.__gen_config()
         with open(CONFIG_PATH, "r", encoding="utf-8") as config:
-            data: TypedConfig = yaml.safe_load(config)  # type: ignore
-        self.__check_config_info(data)
-        return data
+            data: TypedConfig = yaml.safe_load(config)
+        self.__check_config_contents(data)
+        return Config(data)

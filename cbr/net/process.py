@@ -4,6 +4,7 @@ import trio
 
 from typing import TYPE_CHECKING
 
+import cbr
 from cbr.lib.logger import CBRLogger
 from cbr.plugin.info import MessageInfo
 from cbr.resources import formatter
@@ -160,8 +161,8 @@ class ServerProcess(Process):
         return count
 
     def get_status(self):
-        msg = f"ChatBridgeReforged@{self.config.version}\n"
-        msg += f"Lib version : {self.config.lib_version}\n"
+        msg = f"ChatBridgeReforged@{cbr.__version__}\n"
+        msg += f"Lib version : {cbr.__lib_version__}\n"
         msg += f"Online Client : {self.count_online_client()}"
         return msg
 
@@ -232,13 +233,12 @@ class ClientProcess(Process):
         return client_type
 
     def version_check(self, msg):
-        if "lib_version" not in msg.keys():
-            lib_version = None
-            self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {self.server.lib_version}")
-        else:
+        if "lib_version" in msg.keys():
             lib_version = msg["lib_version"]
-            if lib_version != self.server.lib_version:
-                self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {self.server.lib_version}")
+        else:
+            lib_version = None
+        if lib_version != cbr.__lib_version__:
+            self.logger.warning(f"lib version of client {msg['name']}: {str(lib_version)} is not same with server : {cbr.__lib_version__}")
         return lib_version
 
     def login(self, name, password, clients):

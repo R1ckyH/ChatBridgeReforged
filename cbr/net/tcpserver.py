@@ -20,7 +20,6 @@ class CBRTCPServer(Network):
     def __init__(self, logger: CBRLogger, config: "Config"):
         self.logger = logger
         self.config = config
-        self.lib_version = self.config.lib_version
         self.ip = self.config.ip
         self.port = self.config.port
         self.clients = self.setup_client()

@@ -1,5 +1,6 @@
 import os
 
+import cbr
 from cbr.lib.config import ConfigManager
 from cbr.lib.logger import CBRLogger
 from cbr.lib.zip import Compressor
@@ -20,7 +21,7 @@ class CBRServer:
         self.config_manager = ConfigManager(self.logger)
         self.config = self.config_manager.read()
         self.logger.debug_config = self.config.debug
-        self.logger.info(f"Version: {self.config.version}, Lib version: {self.config.lib_version}")
+        self.logger.info(f"Version: {cbr.__version__}, Lib version: {cbr.__lib_version__}")
 
         self.compressor = Compressor(self.logger)
         self.compressor.zip_log("latest.log", self.config.log["size_to_zip"])

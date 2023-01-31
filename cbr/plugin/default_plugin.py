@@ -9,7 +9,7 @@ import threading
 import trio
 
 
-from cbr.lib.config import CHATBRIDGEREFORGED_VERSION
+import cbr
 from cbr.plugin.info import MessageInfo
 from cbr.plugin.cbrinterface import CBRInterface
 from cbr.net.process import ServerProcess
@@ -17,7 +17,7 @@ from cbr.resources import formatter
 
 METADATA = {
     "id": "ChatBridgeReforged",
-    "version": CHATBRIDGEREFORGED_VERSION,
+    "version": cbr.__version__,
     "name": "ChatBridgeReforged",
     "description": "The core of CBR",
     "author": "Ricky",
