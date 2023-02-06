@@ -12,6 +12,7 @@ config
 plugins
 release*
 test*
+!tests
 
 # Files
 config.yml
